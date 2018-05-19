@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mkdir build 2> /dev/null
-cd build && cmake ../
+cd build && cmake ../../
 make
 if [ $? -eq 0 ];
 then

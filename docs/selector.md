@@ -18,3 +18,4 @@ Entonces el modo de uso del selector es el siguiente:
 A selector_select se lo debe llamar siempre para que realize una iteracion por todos los file descriptors.
 
 Ademas, se pueden realizar otras operaciones sobre un selector, como por ejemplo, cambiar los intereses sobre un fd o desregistrarlo. Ver `proxy_http/src/selector/selector.h` para mas detalles.
+CMakeLists.txt not found in /root/CLionProjects/pc-2018-08
