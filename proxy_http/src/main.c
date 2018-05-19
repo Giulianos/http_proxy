@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#include "selector/selector.h"
+#include <selector/selector.h>
 
 void
 listen_read_handler(struct selector_key *key);
