@@ -10,6 +10,8 @@
 
 #include "selector/selector.h"
 
+#include "management/management.h"
+
 void
 listen_read_handler(struct selector_key *key);
 void
@@ -99,6 +101,27 @@ main(const int argc, const char * argv[])
         return 1;
     }
 
+    //MOTA
+    struct addrinfo man_addr;
+    int management=create_management_socket(&man_addr);
+    const struct fd_handler mgmt_handler = {
+            .handle_read       = management_read,
+            .handle_write      = management_write,
+            .handle_close      = management_close, // nada que liberar
+            .handle_block      = NULL,
+    };
+    struct management* a=management_new(management);
+
+    ss = selector_register(selector, management, &mgmt_handler, OP_READ, a);
+
+    if(ss != SELECTOR_SUCCESS) {
+        err_msg = "registering fd";
+        /** exit with error */
+        return 1;
+    }
+
+
+
     for(;;) {
         err_msg = NULL;
         ss = selector_select(selector);
@@ -131,3 +154,5 @@ listen_read_handler(struct selector_key *key)
     close(client);
 
 }
+
+
