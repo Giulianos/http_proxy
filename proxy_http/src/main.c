@@ -2,11 +2,11 @@
 #include <string.h>
 
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <sys/param.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
+
 
 #include "selector/selector.h"
 
@@ -103,7 +103,8 @@ main(const int argc, const char * argv[])
 
     //MOTA
     struct addrinfo man_addr;
-    int management=create_management_socket(&man_addr);
+
+    int management=create_management_socket(htonl(INADDR_ANY),htons(5000));
     const struct fd_handler mgmt_handler = {
             .handle_read       = management_read,
             .handle_write      = management_write,
