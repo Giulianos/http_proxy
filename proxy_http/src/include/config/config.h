@@ -2,19 +2,26 @@
 #define CONFIG_H
 
 /**
+ * initializes the configurations reading from a file
+ */
+
+int
+config_initialization(const char * file_name);
+
+/**
  * recieves a name that represents a configuration and a value to set
  * returns 0 if it was set correctly
  * returns <0 if it failed
  */
 
 int
-set_config(const char * name, const char * value);
+config_set(const char * name, const char * value);
 
 /**
  * recieves a name that represents a configuration and returns the value
  */
 
 char *
-get_config(const char * name);
+config_get(const char * name);
 
 #endif
