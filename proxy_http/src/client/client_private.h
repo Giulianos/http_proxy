@@ -1,6 +1,10 @@
+#ifndef CLIENT_PRIVATE_H
+#define CLIENT_PRIVATE_H
+
 #include <buffer/buffer.h>
 #include <limits/limits.h>
 
+#define GET_CLIENT(key) (client_t)((key)->data)
 
 enum client_state {
     NO_HOST,
@@ -44,3 +48,5 @@ client_terminate(client_t client);
 
 int
 client_set_host(client_t client, const char * host, unsigned int port);
+
+#endif

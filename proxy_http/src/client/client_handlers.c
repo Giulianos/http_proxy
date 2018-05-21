@@ -7,8 +7,6 @@
 #include "client_private.h"
 #include "remote_handlers.h"
 
-#define GET_CLIENT(key) (client_t)((key)->data)
-
 void
 client_read(const struct selector_key * key)
 {
@@ -18,10 +16,15 @@ client_read(const struct selector_key * key)
     case NO_HOST:
     case READ_REQ:
       /**
-       * request_parser_parse(request_parser);
+       * request_parser_parse(client->request_parser,
+       *                      key->fd,
+       *                      client->in_buffer);
        *
        * A callback should be called when the host is found,
        * in this case is client_set_host.
+       *
+       * The parser should set the client->request_complete
+       * flag accordingly.
        *
        * */
       break;
@@ -58,7 +61,7 @@ client_write(const struct selector_key * key) {
     uint8_t * read_ptr = buffer_read_ptr(&client->out_buffer, &read_quantity);
     ssize_t written = write(key->fd, (const void *)read_ptr, read_quantity);
     if(written > 0) {
-      buffer_read_adv(&client->out_buffer, (size_t)written);
+      buffer_read_adv(&client->out_buffer, written);
     }
   } else if(client->response_complete) {
     switch (client->state) {

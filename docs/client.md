@@ -54,7 +54,6 @@ Liberamos los recursos del cliente (buffers, parser, socket al remoto, fd's, etc
 Aca se detallan notas de la implementacion
 
 #### TO DO:
- - Falta implementar los handlers para los eventos en el fd del host remoto.
  - Falta chequear errores
  - Falta revisar como responder errores (tal vez se necesita agregar un estado "**SENDING_ERROR**")
  - Falta acoplar los parsers
