@@ -7,7 +7,7 @@ void management_write(struct selector_key *key);
 void management_close(struct selector_key *key);
 
 //MAGIA
-int get_message(int server_fd, struct sockaddr_in* sender_addr)
+int get_message(int server_fd, struct sockaddr_in6* sender_addr)
 {
     char payload[1024];
     int buffer_len = sizeof(payload) - 1;
@@ -16,14 +16,14 @@ int get_message(int server_fd, struct sockaddr_in* sender_addr)
     struct iovec io_buf;
     memset(&payload, 0, sizeof(payload));
     io_buf.iov_base = payload;
-    io_buf.iov_len = buffer_len;
+    io_buf.iov_len = (unsigned)buffer_len;
 
     struct msghdr msg;
     memset(&msg, 0, sizeof(struct msghdr));
     msg.msg_iov = &io_buf;
     msg.msg_iovlen = 1;
     msg.msg_name = sender_addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(struct sockaddr_in6);
 
     while(1) {
         int recv_size = 0;
@@ -44,8 +44,7 @@ int get_message(int server_fd, struct sockaddr_in* sender_addr)
     return 0;
 }
 
-int send_reply(int server_fd, struct sockaddr_in* dest_addr)
-
+int send_reply(int server_fd, struct sockaddr_in6* dest_addr)
 {
     char buf[8];
     memset(buf, 0, sizeof(buf));
@@ -60,7 +59,7 @@ int send_reply(int server_fd, struct sockaddr_in* dest_addr)
     msg.msg_iov = &io_buf;
     msg.msg_iovlen = 1;
     msg.msg_name = dest_addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(struct sockaddr_in6);
 
     if(sendmsg(server_fd, &msg, 0) == -1) {
         printf("sendmsg() error %d\n");
@@ -100,14 +99,14 @@ int
 create_management_socket(in_addr_t address,in_port_t port){
     int management_socket;
 //    int sock_opt = true;
-    struct sockaddr_in serv_addr; ;
+    struct sockaddr_in6 serv_addr; ;
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = address;
-    serv_addr.sin_port = port;
+    serv_addr.sin6_family = AF_INET6;
+    serv_addr.sin6_addr = in6addr_any;
+    serv_addr.sin6_port = port;
 
     // create a master socket
-    if ((management_socket = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP)) == 0) {
+    if ((management_socket = socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP)) == 0) {
         return -1;
     }
     if(setsockopt(management_socket,SOL_SOCKET,SO_REUSEADDR,&(int){ 1 }, sizeof(int))){
@@ -115,6 +114,7 @@ create_management_socket(in_addr_t address,in_port_t port){
     }
 
     if (bind(management_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+
         return -1;
     }
 

@@ -24,7 +24,7 @@ struct management{
     struct sockaddr_storage       client_addr;
     socklen_t                     client_addr_len;
     int                           client_fd;
-    struct sockaddr_in            addr_buf;
+    struct sockaddr_in6            addr_buf;
 
     buffer                        buffer_write, buffer_read;
     uint8_t                       raw_buffer_write[BUFFER_SIZE],
