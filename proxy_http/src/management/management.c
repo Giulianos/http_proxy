@@ -7,48 +7,67 @@ void management_write(struct selector_key *key);
 void management_close(struct selector_key *key);
 
 //MAGIA
-int get_message(int server_fd, struct sockaddr_in6* sender_addr)
+int get_message(int server_fd, struct sockaddr_in6* sender_addr,struct management *data)
 {
+    size_t count;
+    uint8_t * ptr = buffer_write_ptr(&data->buffer_read, &count);
+    bool error = false;
+    char * pass="passw0rd";
+
     char payload[1024];
-    int buffer_len = sizeof(payload) - 1;
     memset(&payload, 0, sizeof(payload));
 
     struct iovec io_buf;
-    memset(&payload, 0, sizeof(payload));
-    io_buf.iov_base = payload;
-    io_buf.iov_len = (unsigned)buffer_len;
+
+    io_buf.iov_base = ptr;
+    io_buf.iov_len = count;
 
     struct msghdr msg;
     memset(&msg, 0, sizeof(struct msghdr));
     msg.msg_iov = &io_buf;
     msg.msg_iovlen = 1;
     msg.msg_name = sender_addr;
+
     msg.msg_namelen = sizeof(struct sockaddr_in6);
 
-    while(1) {
-        int recv_size = 0;
+    unsigned int bytes=0;
+    while(true) {
+        ssize_t recv_size = 0;
         if((recv_size = recvmsg(server_fd, &msg, 0)) == -1) {
             printf("recvmsg() error\n");
             return 1;
+        }else{
+            buffer_write_adv(&data->buffer_read, recv_size);
+            u_int8_t c;
+            buffer *b=&data->buffer_read;
+            while(buffer_can_read(b)) {
+                c = buffer_read(b);
+
+                printf("--%c\n", c); //TODO sacar blokea
+                if(bytes==0)
+                        data->message_type= (uint8_t) c;
+                else if(bytes==1)
+                    data->cookie= (uint8_t) c;
+                bytes++;
+            }
+            if(msg.msg_flags & MSG_EOR) {
+                break;
+            }
         }
 
-        if(msg.msg_flags & MSG_EOR) {
-            printf("%s\n", payload);
-            break;
-        }
-        else {
-            printf("%s", payload); //if EOR flag is not set, the buffer is not big enough for the whole message
-        }
+
     }
 
     return 0;
 }
 
-int send_reply(int server_fd, struct sockaddr_in6* dest_addr)
+int send_reply(int server_fd, struct sockaddr_in6* dest_addr, struct management *data)
 {
     char buf[8];
     memset(buf, 0, sizeof(buf));
-    strncpy(buf, "OK", sizeof(buf)-1);
+//    strncpy(buf, "OK", sizeof(buf)-1);
+    buf[0]=data->message_type;
+    buf[1]=data->cookie;
 
     struct iovec io_buf;
     io_buf.iov_base = buf;
@@ -66,10 +85,13 @@ int send_reply(int server_fd, struct sockaddr_in6* dest_addr)
         return 1;
     }
 
+
+    data->message_type=0;
+    data->cookie=0;
+
     return 0;
 }
 
-//FIN MAGIA
 
 
 struct management *
@@ -83,10 +105,6 @@ management_new(const int client_fd){
     ret->client_fd     = client_fd;
     buffer_init(&ret->buffer_write, N(ret->raw_buffer_write),ret->raw_buffer_write);
     buffer_init(&ret->buffer_read , N(ret->raw_buffer_read) ,ret->raw_buffer_read);
-//    ret->status = ST_HELO;
-//    ret->error  = PARSE_OK;
-//    ret->argc = 0;
-//    ret->cmd = NULL;
     return ret;
 }
 
@@ -128,7 +146,7 @@ create_management_socket(in_addr_t address,in_port_t port){
 void
 management_read(struct selector_key *key){
     struct management *data = ATTACHMENT(key);
-    get_message(data->client_fd,&data->addr_buf);
+    get_message(data->client_fd,&data->addr_buf,data);
 
 
     if (selector_set_interest(key->s, key->fd, OP_WRITE) != SELECTOR_SUCCESS){
@@ -143,7 +161,7 @@ management_read(struct selector_key *key){
 void
 management_write(struct selector_key *key){
     struct management * data = ATTACHMENT(key);
-    send_reply(data->client_fd,&data->addr_buf);
+    send_reply(data->client_fd,&data->addr_buf,data);
 
     if (selector_set_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS){
         selector_unregister_fd(key->s, data->client_fd);

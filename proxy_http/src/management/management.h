@@ -21,18 +21,17 @@
 #define BUFFER_SIZE 1024
 
 struct management{
-    struct sockaddr_storage       client_addr;
-    socklen_t                     client_addr_len;
     int                           client_fd;
-    struct sockaddr_in6            addr_buf;
+    struct sockaddr_in6           addr_buf;
 
     buffer                        buffer_write, buffer_read;
     uint8_t                       raw_buffer_write[BUFFER_SIZE],
                                   raw_buffer_read[BUFFER_SIZE];
 
-    int                           argc;
-    char **                       cmd;
-    char *                        user;
+    uint8_t                       message_type;
+    uint8_t                       cookie;
+    uint16_t                      data_length;
+
 };
 
 void management_read(struct selector_key *key);
