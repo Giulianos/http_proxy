@@ -1,0 +1,202 @@
+#include "httpRequest.h"
+
+// Start Line Prototypes
+static bool checkStartLine (RequestData *rData, buffer *b);
+static bool extractHttpMethod (RequestData *rData, buffer *b);
+static bool checkUri (RequestData *rData, buffer *b);
+static bool checkUriForHost (RequestData *rData, buffer *b);
+static bool extractHttpVersion (RequestData *rData, buffer *b);
+// Header Prototypes
+static bool checkHostHeader (RequestData *rData, buffer *b);
+static bool extractHost (RequestData *rData, buffer *b);
+
+
+void defaultRequestStruct (RequestData *rData) {
+	rData->state = OK;
+	rData->version = UNDEFINED;
+	rData->method = UNDEFINED_M;
+
+	for (int i = 0; i < HOST_MAX_SIZE; i++) {
+		rData->host[i] = 0;
+	}
+}
+
+bool checkRequest (RequestState *state, buffer *b) {
+	bool success = true;
+	// Allocate enough memory for 1 CommandData struct and set it to zero.
+	RequestData *rData = (RequestData *) malloc(sizeof(RequestData));
+
+	if (rData == NULL) {
+		fprintf(stderr, "Error: %s\n", strerror(errno));
+		return false;
+	}
+
+	defaultRequestStruct(rData);
+
+	if (success && !checkStartLine(rData, b)) {
+		success = false;
+	}
+
+	if (success && !checkHostHeader(rData, b)) {
+		rData->state = HOST_ERROR;
+		success = false;
+	}
+
+	if (success == false) {
+		*state = (rData->state == OK ?
+			GENERAL_ERROR : rData->state);
+	}
+
+	free(rData);
+
+	return success;
+}
+
+/**               START LINE FUNCTIONS BEGIN               **/
+
+static bool checkStartLine (RequestData *rData, buffer *b) {
+	if (!extractHttpMethod(rData, b)) {
+		rData->state = METHOD_ERROR;
+		return false;
+	}
+
+	moveThroughSpaces(b);
+
+	if (!checkUri(rData, b) && rData->host[0] != 0) {
+		rData->state = HOST_ERROR;
+		return false;
+	}
+
+	moveThroughSpaces(b);
+
+	if (!matchFormat("HTTP/", b)) {
+		rData->state = START_LINE_FORMAT_ERROR;
+		return false;
+	}
+
+	if (!extractHttpVersion(rData, b)) {
+		rData->state = VERSION_ERROR;
+		return false;
+	}
+
+	return true;
+}
+
+static bool extractHttpMethod (RequestData *rData, buffer *b) {
+	char *methodOption[] = {"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "TRACE"};
+	httpMethod methodType[] = {CONNECT, DELETE, GET, HEAD, OPTIONS, POST, PUT, TRACE};
+	int length = sizeof(methodOption) / sizeof(methodOption[0]);
+	char c = READ_UP_CHAR(b);
+
+	for (int i = 0; i < length; i++) {
+		if (methodOption[i][0] == c) {
+			if (matchFormat(&(methodOption[i][1]), b)) {
+				rData->method = methodType[i];
+				break;
+			}
+		}
+	}
+	return rData->method != UNDEFINED_M;
+}
+
+static bool checkUri (RequestData *rData, buffer *b) {
+	if (!matchFormat("HTTP", b)) {
+		return false;
+	}
+
+	if (PEEK_UP_CHAR(b) == 'S') {
+		buffer_read(b);
+	}
+
+	if (!matchFormat("://", b)) {
+		return false;
+	}
+
+	return checkUriForHost(rData, b);
+}
+
+static bool checkUriForHost (RequestData *rData, buffer *b) {
+	char c;
+	int i = 0;
+
+	// Si llego a este punto es porque tengu un uri absoluto que empieza con http:// o https://.
+
+	while (i < HOST_MAX_SIZE && (c = READ_UP_CHAR(b)) != 0) {
+		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
+			rData->host[i++] = c;
+		} else if (c == '@') { // Lo que copié hasta el momento era el userinfo.
+			rData->host[0] = 0;
+			i = 0;
+		} else {
+			break;
+		}
+	}
+	return i < HOST_MAX_SIZE;
+}
+
+static bool extractHttpVersion (RequestData *rData, buffer *b) {
+	char buf[VERSION_TEXT_SIZE + 1] = {0}; // Reserve space for NULL termination.
+	char *versionOption[] = {"1.0", "1.1"};
+	httpVersion versionType[] = {V_1_0, V_1_1};
+	int versions = sizeof(versionType) / sizeof(versionType[0]);
+
+	if (!writeToBuf(buf, VERSION_TEXT_SIZE, b)) {
+		return false;
+	}
+
+	for (int i = 0; i < versions; i++) {
+		if (strcmp(versionOption[i], buf) == 0) {
+			rData->version = versionType[i];
+			break;
+		}
+	}
+
+	return rData->version != UNDEFINED;
+}
+
+/**               START LINE FUNCTIONS END                 **/
+
+/**               HEADER FUNCTIONS BEGIN                   **/
+
+static bool checkHostHeader (RequestData *rData, buffer *b) {
+	char c;
+	bool hostHeader = false;
+
+	while ((c = READ_UP_CHAR(b)) != 0) {
+		if (c == 'H') {
+			if (matchFormat("OST:", b)) {
+				hostHeader = true;
+				break;
+			}
+		} else if (c == '\r') {
+			if (checkLF(b) && checkCRLF(b)) {
+				// Busco CRLF consecutivos - fin headers
+				break;
+			}
+		}
+	}
+
+	if (hostHeader) {
+		return extractHost(rData, b);
+	}
+
+	return false;
+}
+
+static bool extractHost (RequestData *rData, buffer *b) {
+	int i = 0;
+	char c;
+
+	moveThroughSpaces(b);
+
+	while (i < HOST_MAX_SIZE && (c = READ_UP_CHAR(b)) != 0) {
+		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
+			rData->host[i++] = c;
+		} else {
+			break;
+		}
+	}
+	return i < HOST_MAX_SIZE && (c == ' ' || c == '\t' || c == '\r');
+}
+
+/**               HEADER FUNCTIONS END                     **/
