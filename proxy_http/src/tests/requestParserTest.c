@@ -1,4 +1,4 @@
-#include "httpRequest.c" // Source code included to test static functions.
+#include "requestParser.c" // Source code included to test static functions.
 #include <assert.h>
 
 static void assertMethod (RequestData *rData, buffer *b);

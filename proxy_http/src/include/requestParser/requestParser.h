@@ -1,12 +1,12 @@
-#ifndef HTTP_REQUEST_H
-#define HTTP_REQUEST_H
+#ifndef REQUEST_PARSER_H
+#define REQUEST_PARSER_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <errno.h>
-#include "parserUtils.h"
+#include "myParserUtils.h"
 
 #define VERSION_TEXT_SIZE 3
 // HTTP/*.* - 8 caracteres
