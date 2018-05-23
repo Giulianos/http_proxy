@@ -29,17 +29,17 @@ typedef enum {
 	START_LINE_FORMAT_ERROR, METHOD_ERROR, VERSION_ERROR,
 	HOST_ERROR,
 	ALLOCATION_ERROR
-} RequestState;
+} requestState;
 
 typedef struct RequestData {
-	RequestState state;
+	requestState state;
 	httpVersion version;
 	httpMethod method;
 	char host[HOST_MAX_SIZE];
 } RequestData;
 
 void defaultRequestStruct (RequestData *rData);
-bool checkRequest (RequestState *state, buffer *b);
-const char * errorMessage (const RequestState state);
+bool checkRequest (requestState *state, buffer *b);
+const char * errorMessage (const requestState state);
 
 #endif

@@ -10,6 +10,7 @@
 #include "buffer.h"
 
 #define READ_UP_CHAR(b) toupper(buffer_read(b))
+#define READ_DOWN_CHAR(b) tolower(buffer_read(b))
 #define PEEK_UP_CHAR(b) toupper(buffer_peek(b))
 
 void moveThroughSpaces (buffer *b);

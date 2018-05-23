@@ -1,9 +1,11 @@
 #include "httpRequest.h"
 
+static bool checkRequestInner (RequestData *rData, buffer *b);
 // Start Line Prototypes
 static bool checkStartLine (RequestData *rData, buffer *b);
 static bool extractHttpMethod (RequestData *rData, buffer *b);
 static bool checkUri (RequestData *rData, buffer *b);
+static void cleanRelativeUri (RequestData *rData, buffer *b);
 static bool checkUriForHost (RequestData *rData, buffer *b);
 static bool extractHttpVersion (RequestData *rData, buffer *b);
 // Header Prototypes
@@ -21,8 +23,9 @@ void defaultRequestStruct (RequestData *rData) {
 	}
 }
 
-bool checkRequest (RequestState *state, buffer *b) {
+bool checkRequest (requestState *state, buffer *b) {
 	bool success = true;
+
 	// Allocate enough memory for 1 CommandData struct and set it to zero.
 	RequestData *rData = (RequestData *) malloc(sizeof(RequestData));
 
@@ -31,16 +34,7 @@ bool checkRequest (RequestState *state, buffer *b) {
 		return false;
 	}
 
-	defaultRequestStruct(rData);
-
-	if (success && !checkStartLine(rData, b)) {
-		success = false;
-	}
-
-	if (success && !checkHostHeader(rData, b)) {
-		rData->state = HOST_ERROR;
-		success = false;
-	}
+	success = checkRequestInner(rData, b);
 
 	if (success == false) {
 		*state = (rData->state == OK ?
@@ -48,6 +42,28 @@ bool checkRequest (RequestState *state, buffer *b) {
 	}
 
 	free(rData);
+
+	return success;
+}
+
+static bool checkRequestInner (RequestData *rData, buffer *b) {
+	bool success = true;
+
+	defaultRequestStruct(rData);
+
+	if (success && !checkStartLine(rData, b)) {
+		success = false;
+	}
+
+	// Si ya encontré el host en el uri no hace falta parsear los headers.
+	if (success && rData->host[0] != 0) {
+		return true;
+	}
+
+	if (success && !checkHostHeader(rData, b)) {
+		rData->state = HOST_ERROR;
+		success = false;
+	}
 
 	return success;
 }
@@ -62,6 +78,8 @@ static bool checkStartLine (RequestData *rData, buffer *b) {
 
 	moveThroughSpaces(b);
 
+	// Si checkUri es falso pero no copié el host sigo adelante.
+	// El problema lo tengo si copié host pero este es inválido.
 	if (!checkUri(rData, b) && rData->host[0] != 0) {
 		rData->state = HOST_ERROR;
 		return false;
@@ -100,19 +118,34 @@ static bool extractHttpMethod (RequestData *rData, buffer *b) {
 }
 
 static bool checkUri (RequestData *rData, buffer *b) {
+	bool isAbsolute = true;
+
 	if (!matchFormat("HTTP", b)) {
-		return false;
+		isAbsolute = false;
 	}
 
-	if (PEEK_UP_CHAR(b) == 'S') {
+	if (isAbsolute && PEEK_UP_CHAR(b) == 'S') {
 		buffer_read(b);
 	}
 
-	if (!matchFormat("://", b)) {
+	if (isAbsolute && !matchFormat("://", b)) {
+		isAbsolute = false;
+	}
+
+	if (!isAbsolute) {
+		cleanRelativeUri(rData, b);
 		return false;
 	}
 
 	return checkUriForHost(rData, b);
+}
+
+static void cleanRelativeUri (RequestData *rData, buffer *b) {
+	char c;
+
+	while ((c = PEEK_UP_CHAR(b)) != 0 && c != ' ' && c != '\t') {
+		buffer_read(b);
+	}
 }
 
 static bool checkUriForHost (RequestData *rData, buffer *b) {
@@ -121,8 +154,8 @@ static bool checkUriForHost (RequestData *rData, buffer *b) {
 
 	// Si llego a este punto es porque tengu un uri absoluto que empieza con http:// o https://.
 
-	while (i < HOST_MAX_SIZE && (c = READ_UP_CHAR(b)) != 0) {
-		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
+	while (i < HOST_MAX_SIZE && (c = READ_DOWN_CHAR(b)) != 0) {
+		if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
 			rData->host[i++] = c;
 		} else if (c == '@') { // Lo que copié hasta el momento era el userinfo.
 			rData->host[0] = 0;
@@ -189,8 +222,8 @@ static bool extractHost (RequestData *rData, buffer *b) {
 
 	moveThroughSpaces(b);
 
-	while (i < HOST_MAX_SIZE && (c = READ_UP_CHAR(b)) != 0) {
-		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
+	while (i < HOST_MAX_SIZE && (c = READ_DOWN_CHAR(b)) != 0) {
+		if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
 			rData->host[i++] = c;
 		} else {
 			break;

@@ -1,5 +1,6 @@
 #include "httpResponse.h"
 
+static bool checkResponseInner (ResponseData *rData, buffer *b, buffer *bOut);
 // Start Line Prototypes
 static bool checkStartLine (ResponseData *rData, buffer *b);
 static bool extractHttpVersion (ResponseData *rData, buffer *b);
@@ -37,6 +38,21 @@ bool checkResponse (responseState *state, buffer *b, buffer *bOut) {
 		return false;
 	}
 
+	success = checkResponseInner(rData, b, bOut);
+
+	if (success == false) {
+		*state = (rData->state == OK ?
+			GENERAL_ERROR : rData->state);
+	}
+
+	free(rData);
+
+	return success;
+}
+
+static bool checkResponseInner (ResponseData *rData, buffer *b, buffer *bOut) {
+	bool success = true;
+
 	defaultResponseStruct(rData);
 
 	if (success && !checkStartLine(rData, b)) {
@@ -51,13 +67,6 @@ bool checkResponse (responseState *state, buffer *b, buffer *bOut) {
 	if (success && !extractBody(rData, b, bOut)) {
 		success = false;
 	}
-
-	if (success == false) {
-		*state = (rData->state == OK ?
-			GENERAL_ERROR : rData->state);
-	}
-
-	free(rData);
 
 	return success;
 }
