@@ -26,7 +26,8 @@ typedef enum {
 
 typedef enum {
 	OK, GENERAL_ERROR,
-	START_LINE_FORMAT_ERROR, METHOD_ERROR, VERSION_ERROR,
+	START_LINE_FORMAT_ERROR, VERSION_ERROR,
+	GENERAL_METHOD_ERROR, UNSUPPORTED_METHOD_ERROR,
 	HOST_ERROR,
 	ALLOCATION_ERROR
 } requestState;
@@ -36,6 +37,7 @@ typedef struct RequestData {
 	httpVersion version;
 	httpMethod method;
 	char host[HOST_MAX_SIZE];
+	bool isLocalHost;
 } RequestData;
 
 void defaultRequestStruct (RequestData *rData);

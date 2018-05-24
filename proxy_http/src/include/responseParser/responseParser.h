@@ -8,6 +8,9 @@
 #include <errno.h>
 #include "myParserUtils.h"
 
+// Códigos de status
+#define STATUS_OK 200
+
 #define VERSION_TEXT_SIZE 3
 
 // V_2.0 is not supported.

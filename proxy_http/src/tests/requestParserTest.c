@@ -45,8 +45,14 @@ static void assertMethod (RequestData *rData, buffer *b) {
 	assert(extractHttpMethod(rData, b));
 	assert(rData->method == HEAD);
 
-	insertToBuffer(rData, "PUT", b);
+	insertToBuffer(rData, "POST", b);
 	assert(extractHttpMethod(rData, b));
+	assert(rData->method == POST);
+
+
+	// Método no soportado.
+	insertToBuffer(rData, "PUT", b);
+	assert(!extractHttpMethod(rData, b));
 	assert(rData->method == PUT);
 }
 
