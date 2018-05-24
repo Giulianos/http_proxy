@@ -1,7 +1,7 @@
 #include "requestParser.h"
 
 static bool checkRequestInner (RequestData *rData, buffer *b);
-static void checkLocalhost (RequestData *rData);
+//static void checkLocalhost (RequestData *rData);
 // Prototipos Start Line
 static bool checkStartLine (RequestData *rData, buffer *b);
 static bool extractHttpMethod (RequestData *rData, buffer *b);
@@ -68,19 +68,20 @@ static bool checkRequestInner (RequestData *rData, buffer *b) {
 		success = false;
 	}
 
-	checkLocalhost(rData);
+//	checkLocalhost(rData);
 
 	return success;
 }
 
-static void checkLocalhost (RequestData *rData) {
-	char *host = rData->host;
-
-	if (strcmp("localhost", host)) {
-		rData-> isLocalHost = true;
-	}
-	// Falta caso en que paso ip.
-}
+//static void checkLocalhost (RequestData *rData) {
+//	char *host = rData->host;
+//
+//	if (strcmp("localhost", host)) {
+//		rData-> isLocalHost = true;
+//	}
+//	
+//	// Falta caso en que paso ip.
+//}
 
 /**               COMIENZO FUNCIONES DE START LINE              **/
 
@@ -219,6 +220,12 @@ static bool checkHostHeader (RequestData *rData, buffer *b) {
 				hostHeader = true;
 				break;
 			}
+		} else if (c == 'L') {
+			// Veo si tengo header agregado por proxy para indentificar si tengo un loop.
+			if (matchFormat("OCALHOST:", b)) {
+				rData->isLocalHost = true;
+				break;
+			}
 		} else if (c == '\r') {
 			if (checkLF(b) && checkCRLF(b)) {
 				// Busco CRLF consecutivos - fin headers
@@ -247,7 +254,8 @@ static bool extractHost (RequestData *rData, buffer *b) {
 			break;
 		}
 	}
-	return i < HOST_MAX_SIZE && (c == ' ' || c == '\t' || c == '\r');
+	// Recordar que el header host puede incluir un puerto.
+	return i < HOST_MAX_SIZE && (c == ' ' || c == '\t' || c == '\r' || c == ':');
 }
 
 /**               FIN DE FUNCIONES DE HEADER                    **/
