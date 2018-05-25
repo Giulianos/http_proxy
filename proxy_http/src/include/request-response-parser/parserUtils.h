@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-#include "buffer.h"
+#include <buffer/buffer.h>
 
 #define READ_UP_CHAR(b) toupper(buffer_read(b))
 #define READ_DOWN_CHAR(b) tolower(buffer_read(b))
