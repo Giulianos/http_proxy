@@ -1,5 +1,5 @@
-#ifndef PARSER_UTILS_H
-#define PARSER_UTILS_H
+#ifndef MY_PARSER_UTILS_H
+#define MY_PARSER_UTILS_H
 
 #include <stdio.h>
 #include <stdint.h>

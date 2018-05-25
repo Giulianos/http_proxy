@@ -1,23 +1,21 @@
 #include <request-response-parser/httpResponse.h>
 
 static bool checkResponseInner (ResponseData *rData, buffer *b, buffer *bOut);
-// Start Line Prototypes
+// Prototipos Start Line
 static bool checkStartLine (ResponseData *rData, buffer *b);
 static bool extractHttpVersion (ResponseData *rData, buffer *b);
 static bool extractStatus (ResponseData *rData, buffer *b);
 static bool isValidStatus (const int status);
-// Header Prototypes
+// Prototipos Header
 static bool checkHeaders (ResponseData *rData, buffer *b);
 static bool checkContentHeader (ResponseData *rData, buffer *b);
 static bool checkContentLength (ResponseData *rData, buffer *b);
 static bool checkContentEncoding (ResponseData *rData, buffer *b);
 static bool checkTransferHeader (ResponseData *rData, buffer *b);
 static bool checkIfChunked (ResponseData *rData, buffer *b);
-// Body Prototypes
+// Prototipos Body
 static bool extractBody (ResponseData *rData, buffer *b, buffer *bOut);
 static bool extractChunkedBody (ResponseData *rData, buffer *b, buffer *bOut);
-//static bool showBody (ResponseData *rData, buffer *b);
-//static bool showChunkedBody (ResponseData *rData, buffer *b);
 
 
 void defaultResponseStruct (ResponseData *rData) {
@@ -30,10 +28,11 @@ void defaultResponseStruct (ResponseData *rData) {
 
 bool checkResponse (responseState *state, buffer *b, buffer *bOut) {
 	bool success = true;
-	// Allocate enough memory for 1 CommandData struct and set it to zero.
+	// Reservo suficiente memoria para 1 ResponseData struct.
 	ResponseData *rData = (ResponseData *) malloc(sizeof(ResponseData));
 
 	if (rData == NULL) {
+		rData->state = ALLOCATION_ERROR;
 		fprintf(stderr, "Error: %s\n", strerror(errno));
 		return false;
 	}
@@ -71,7 +70,7 @@ static bool checkResponseInner (ResponseData *rData, buffer *b, buffer *bOut) {
 	return success;
 }
 
-/**               START LINE FUNCTIONS BEGIN               **/
+/**               COMIENZO FUNCIONES DE START LINE              **/
 
 static bool checkStartLine (ResponseData *rData, buffer *b) {
 	if (!matchFormat("HTTP/", b)) {
@@ -92,7 +91,7 @@ static bool checkStartLine (ResponseData *rData, buffer *b) {
 }
 
 static bool extractHttpVersion (ResponseData *rData, buffer *b) {
-	char buf[VERSION_TEXT_SIZE + 1] = {0}; // Reserve space for NULL termination.
+	char buf[VERSION_TEXT_SIZE + 1] = {0}; // Reservo espacio para NULL termination.
 	char *versionOption[] = {"1.0", "1.1"};
 	httpVersion versionType[] = {V_1_0, V_1_1};
 	int versions = sizeof(versionType) / sizeof(versionType[0]);
@@ -131,14 +130,13 @@ static bool extractStatus (ResponseData *rData, buffer *b) {
 	return true;
 }
 
-// To be implemented.
 static bool isValidStatus (const int status) {
-	return true;
+	return status == STATUS_OK;
 }
 
-/**               START LINE FUNCTIONS END                 **/
+/**               FIN DE FUNCIONES DE START LINE                **/
 
-/**               HEADER FUNCTIONS BEGIN                   **/
+/**               COMIENZO FUNCIONES DE HEADER                  **/
 
 static bool checkHeaders (ResponseData *rData, buffer *b) {
 	char c;
@@ -151,7 +149,7 @@ static bool checkHeaders (ResponseData *rData, buffer *b) {
 			checkTransferHeader(rData, b);
 		} else if (c == '\r') {
 			if (checkLF(b) && checkCRLF(b)) {
-				// Check for 2 consecutive CRLF
+				// Verifico si hay 2 CRLF consecutivos.
 				endOfHeaders = true;
 				break;
 			}
@@ -224,12 +222,12 @@ static bool checkIfChunked (ResponseData *rData, buffer *b) {
 	return true;
 }
 
-/**               HEADER FUNCTIONS END                     **/
+/**               FIN DE FUNCIONES DE HEADER                    **/
 
-/**               BODY FUNCTIONS BEGIN                     **/
+/**               COMIENZO FUNCIONES DE BODY                    **/
 
 static bool extractBody (ResponseData *rData, buffer *b, buffer *bOut) {
-	// Chunked encoding overrides content length.
+	// Chunked encoding Sobreescribe content length.
 	if (rData->isChunked == true) {
 		return extractChunkedBody(rData, b, bOut);
 	}
@@ -244,15 +242,15 @@ static bool extractBody (ResponseData *rData, buffer *b, buffer *bOut) {
 static bool extractChunkedBody (ResponseData *rData, buffer *b, buffer *bOut) {
 	int chunkLength = 0;
 
-	// With the do while, last step belongs to 2 consecutive
-	// empty lines as expected.
+	// Con el do while, la última iteración corresponde a dos
+	// empty line consecutivos como corresponde.
 	do {
 		if (!getHexNumber(&chunkLength,b)) {
 			rData->state = CHUNK_HEX_ERROR;
 			return false;
 		}
 
-		if (!checkCRLF(b)) { // Length delimiter.
+		if (!checkCRLF(b)) { // Delimitador de longitud de chunk.
 			rData->state = CHUNK_DELIMITER_ERROR;
 			return false;
 		}
@@ -261,7 +259,7 @@ static bool extractChunkedBody (ResponseData *rData, buffer *b, buffer *bOut) {
 			return false;
 		}
 
-		if (!checkCRLF(b)) { // Chunk delimeter.
+		if (!checkCRLF(b)) { // Delimitador de chunk.
 			rData->state = CHUNK_DELIMITER_ERROR;
 			return false;
 		}
@@ -270,4 +268,4 @@ static bool extractChunkedBody (ResponseData *rData, buffer *b, buffer *bOut) {
 	return true;
 }
 
-/**               BODY FUNCTIONS END                       **/
+/**               FIN DE FUNCIONES DE BODY                       **/

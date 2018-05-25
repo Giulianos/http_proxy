@@ -1,4 +1,4 @@
-#include "httpRequest.c" // Source code included to test static functions.
+#include "requestParser.c" // Source code included to test static functions.
 #include <assert.h>
 
 static void assertMethod (RequestData *rData, buffer *b);
@@ -45,8 +45,14 @@ static void assertMethod (RequestData *rData, buffer *b) {
 	assert(extractHttpMethod(rData, b));
 	assert(rData->method == HEAD);
 
-	insertToBuffer(rData, "PUT", b);
+	insertToBuffer(rData, "POST", b);
 	assert(extractHttpMethod(rData, b));
+	assert(rData->method == POST);
+
+
+	// Método no soportado.
+	insertToBuffer(rData, "PUT", b);
+	assert(!extractHttpMethod(rData, b));
 	assert(rData->method == PUT);
 }
 

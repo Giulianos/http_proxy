@@ -1,12 +1,15 @@
-#ifndef HTTP_RESPONSE_H
-#define HTTP_RESPONSE_H
+#ifndef RESPONSE_PARSER_H
+#define RESPONSE_PARSER_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <errno.h>
-#include "parserUtils.h"
+#include "myParserUtils.h"
+
+// Códigos de status
+#define STATUS_OK 200
 
 #define VERSION_TEXT_SIZE 3
 

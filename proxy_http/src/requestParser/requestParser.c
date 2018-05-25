@@ -1,14 +1,15 @@
 #include <request-response-parser/httpRequest.h>
 
 static bool checkRequestInner (RequestData *rData, buffer *b);
-// Start Line Prototypes
+//static void checkLocalhost (RequestData *rData);
+// Prototipos Start Line
 static bool checkStartLine (RequestData *rData, buffer *b);
 static bool extractHttpMethod (RequestData *rData, buffer *b);
 static bool checkUri (RequestData *rData, buffer *b);
 static void cleanRelativeUri (RequestData *rData, buffer *b);
 static bool checkUriForHost (RequestData *rData, buffer *b);
 static bool extractHttpVersion (RequestData *rData, buffer *b);
-// Header Prototypes
+// Prototipos Header
 static bool checkHostHeader (RequestData *rData, buffer *b);
 static bool extractHost (RequestData *rData, buffer *b);
 
@@ -17,6 +18,7 @@ void defaultRequestStruct (RequestData *rData) {
 	rData->state = OK;
 	rData->version = UNDEFINED;
 	rData->method = UNDEFINED_M;
+	rData->isLocalHost = false;
 
 	for (int i = 0; i < HOST_MAX_SIZE; i++) {
 		rData->host[i] = 0;
@@ -26,10 +28,11 @@ void defaultRequestStruct (RequestData *rData) {
 bool checkRequest (requestState *state, buffer *b) {
 	bool success = true;
 
-	// Allocate enough memory for 1 CommandData struct and set it to zero.
+	// Reservo suficiente memoria para 1 RequestData struct.
 	RequestData *rData = (RequestData *) malloc(sizeof(RequestData));
 
 	if (rData == NULL) {
+		rData->state = ALLOCATION_ERROR;
 		fprintf(stderr, "Error: %s\n", strerror(errno));
 		return false;
 	}
@@ -65,14 +68,30 @@ static bool checkRequestInner (RequestData *rData, buffer *b) {
 		success = false;
 	}
 
+//	checkLocalhost(rData);
+
 	return success;
 }
 
-/**               START LINE FUNCTIONS BEGIN               **/
+//static void checkLocalhost (RequestData *rData) {
+//	char *host = rData->host;
+//
+//	if (strcmp("localhost", host)) {
+//		rData-> isLocalHost = true;
+//	}
+//
+//	// Falta caso en que paso ip.
+//}
+
+/**               COMIENZO FUNCIONES DE START LINE              **/
 
 static bool checkStartLine (RequestData *rData, buffer *b) {
 	if (!extractHttpMethod(rData, b)) {
-		rData->state = METHOD_ERROR;
+		if (rData->method == UNDEFINED_M) {
+			rData->state = GENERAL_METHOD_ERROR;
+		} else {
+			rData->state = UNSUPPORTED_METHOD_ERROR;
+		}
 		return false;
 	}
 
@@ -114,7 +133,7 @@ static bool extractHttpMethod (RequestData *rData, buffer *b) {
 			}
 		}
 	}
-	return rData->method != UNDEFINED_M;
+	return rData->method == GET || rData->method == HEAD || rData->method == POST;
 }
 
 static bool checkUri (RequestData *rData, buffer *b) {
@@ -187,9 +206,9 @@ static bool extractHttpVersion (RequestData *rData, buffer *b) {
 	return rData->version != UNDEFINED;
 }
 
-/**               START LINE FUNCTIONS END                 **/
+/**               FIN DE FUNCIONES DE START LINE                **/
 
-/**               HEADER FUNCTIONS BEGIN                   **/
+/**               COMIENZO FUNCIONES DE HEADER                  **/
 
 static bool checkHostHeader (RequestData *rData, buffer *b) {
 	char c;
@@ -199,6 +218,12 @@ static bool checkHostHeader (RequestData *rData, buffer *b) {
 		if (c == 'H') {
 			if (matchFormat("OST:", b)) {
 				hostHeader = true;
+				break;
+			}
+		} else if (c == 'L') {
+			// Veo si tengo header agregado por proxy para indentificar si tengo un loop.
+			if (matchFormat("OCALHOST:", b)) {
+				rData->isLocalHost = true;
 				break;
 			}
 		} else if (c == '\r') {
@@ -229,7 +254,8 @@ static bool extractHost (RequestData *rData, buffer *b) {
 			break;
 		}
 	}
-	return i < HOST_MAX_SIZE && (c == ' ' || c == '\t' || c == '\r');
+	// Recordar que el header host puede incluir un puerto.
+	return i < HOST_MAX_SIZE && (c == ' ' || c == '\t' || c == '\r' || c == ':');
 }
 
-/**               HEADER FUNCTIONS END                     **/
+/**               FIN DE FUNCIONES DE HEADER                    **/
