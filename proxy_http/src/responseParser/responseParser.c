@@ -91,19 +91,19 @@ static bool checkStartLine (ResponseData *rData, buffer *b) {
 }
 
 static bool extractHttpVersion (ResponseData *rData, buffer *b) {
-	char buf[VERSION_TEXT_SIZE + 1] = {0}; // Reservo espacio para NULL termination.
 	char *versionOption[] = {"1.0", "1.1"};
 	httpVersion versionType[] = {V_1_0, V_1_1};
-	int versions = sizeof(versionType) / sizeof(versionType[0]);
+	int length = sizeof(versionType) / sizeof(versionType[0]);
+	char c;
 
-	if (!writeToBuf(buf, VERSION_TEXT_SIZE, b)) {
-		return false;
-	}
+	if (matchFormat("1.", b)) {
+		c = READ_UP_CHAR(b);
 
-	for (int i = 0; i < versions; i++) {
-		if (strcmp(versionOption[i], buf) == 0) {
-			rData->version = versionType[i];
-			break;
+		for (int i = 0; i < length; i++) {
+			if (versionOption[i][2] == c) {
+				rData->version = versionType[i];
+				break;
+			}
 		}
 	}
 

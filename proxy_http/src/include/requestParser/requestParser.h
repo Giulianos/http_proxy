@@ -8,12 +8,28 @@
 #include <errno.h>
 #include <myParserUtils/myParserUtils.h>
 
+// El buffer auxiliar es usado si me llega un read del buffer = 0
+// y necesito guardar lo que estaba comparando para cuando read != de 0.
+#define AUX_BUFFER_SIZE 255
+
 #define VERSION_TEXT_SIZE 3
 // HTTP/*.* - 8 caracteres
 #define HTTP_TEXT_SIZE 8
 
 // RFC 1123 - GENERAL ISSUES
 #define HOST_MAX_SIZE 255
+
+typedef enum {
+	METHOD,
+	URI,
+	RELATIVE_URI,
+	URI_HOST,
+	VERSION,
+	START_LINE_END,
+	LOCALHOST_HEADER_CHECK,
+	HOST_HEADER_CHECK,
+	FINISHED
+} requestParserState;
 
 // V_2.0 no es soportado.
 typedef enum {
@@ -26,13 +42,15 @@ typedef enum {
 
 typedef enum {
 	OK, GENERAL_ERROR,
-	START_LINE_FORMAT_ERROR, VERSION_ERROR,
+	START_LINE_FORMAT_ERROR, VERSION_ERROR, START_LINE_END_ERROR,
 	GENERAL_METHOD_ERROR, UNSUPPORTED_METHOD_ERROR,
 	HOST_ERROR,
 	ALLOCATION_ERROR
 } requestState;
 
 typedef struct RequestData {
+	requestParserState parserState;
+	bool isBufferEmpty;
 	requestState state;
 	httpVersion version;
 	httpMethod method;
@@ -41,7 +59,7 @@ typedef struct RequestData {
 } RequestData;
 
 void defaultRequestStruct (RequestData *rData);
-bool checkRequest (requestState *state, buffer *b);
+bool checkRequest (requestState *state, buffer *b, buffer *bOut);
 const char * errorMessage (const requestState state);
 
 #endif

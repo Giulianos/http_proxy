@@ -2,7 +2,8 @@
  * buffer.c - buffer con acceso directo (útil para I/O) que mantiene
  *            mantiene puntero de lectura y de escritura.
  *
- * La implementación del buffer es la de Juan salvo por la función buffer_peek.
+ * La implementación del buffer es la de Juan salvo por la función buffer_peek y los cambios para aceptar una zona reservada.
+ * Para el resto de las funciones, es todo lo mismo trabajando con infLimit en vez de data.
  */
 #include <string.h>
 #include <stdint.h>
@@ -12,17 +13,22 @@
 
 inline void
 buffer_reset(buffer *b) {
-    b->read  = b->data;
-    b->write = b->data;
+    b->read  = b->infLimit;
+    b->write = b->infLimit;
 }
 
 void
 buffer_init(buffer *b, const size_t n, uint8_t *data) {
+    buffer_init_r(b, 0, n, data);
+}
+
+void
+buffer_init_r(buffer *b, const size_t n0, const size_t n, uint8_t *data) {
     b->data = data;
+    b->infLimit = b->data + n0;
     buffer_reset(b);
     b->limit = b->data + n;
 }
-
 
 inline bool
 buffer_can_write(buffer *b) {
@@ -87,6 +93,36 @@ buffer_peek(buffer *b) {
     return buffer_can_read(b) ? *b->read : 0;
 }
 
+// Función propia
+inline bool
+buffer_can_write_reserved(buffer *b) {
+    return b->read - b->data > 0;
+}
+
+// Función propia
+inline bool
+is_reserved(buffer *b) {
+    return b->read - b->infLimit < 0;
+}
+
+// Función propia
+inline void
+buffer_write_adv_reserved(buffer *b, const ssize_t bytes) {
+    if(bytes > -1) {
+        b->read -= (size_t) bytes;
+        assert(b->data <= b->read);
+    }
+}
+
+// Función propia
+inline void
+buffer_write_reserved(buffer *b, uint8_t c) {
+    if(buffer_can_write_reserved(b)) {
+        buffer_write_adv_reserved(b, 1);
+        *b->read = c;
+    }
+}
+
 inline void
 buffer_write(buffer *b, uint8_t c) {
     if(buffer_can_write(b)) {
@@ -97,15 +133,15 @@ buffer_write(buffer *b, uint8_t c) {
 
 void
 buffer_compact(buffer *b) {
-    if(b->data == b->read) {
+    if(b->infLimit == b->read) {
         // nada por hacer
     } else if(b->read == b->write) {
-        b->read  = b->data;
-        b->write = b->data;
+        b->read  = b->infLimit;
+        b->write = b->infLimit;
     } else {
         const size_t n = b->write - b->read;
-        memmove(b->data, b->read, n);
-        b->read  = b->data;
-        b->write = b->data + n;
+        memmove(b->infLimit, b->read, n);
+        b->read  = b->infLimit;
+        b->write = b->infLimit + n;
     }
 }

@@ -1,29 +1,35 @@
 #include <myParserUtils/myParserUtils.h>
+
 static int hexCharToDec (char c);
 
-void moveThroughSpaces (buffer *b) {
+uint8_t readAndWrite (buffer *b, buffer *bOut) {
+	// Si estoy leyendo algo de la zona reservada ya lo escribe al buffer
+	// de salida previamente.
+	bool isReserved = is_reserved(b);
+	uint8_t c = buffer_read(b);
+
+	if (!isReserved && c != 0) {
+		buffer_write(bOut, (c = buffer_read(b)));
+	}
+
+	return c;
+}
+
+void moveThroughSpaces (buffer *b, buffer *bOut) {
 	uint8_t c;
 
 	while ((c = buffer_peek(b)) == ' ' || c == '\t') {
-		buffer_read(b);
+		readAndWrite(b, bOut);
 	};
 }
 
-bool writeToBuf (char *buf, int bufSize, buffer *b) {
-	uint8_t c = 0;
+void writeToBuf (char *myBuf, buffer *b) {
+	int i = 0;
 
-	if (bufSize <= 0) { // Sí bufSize <= 0 no escribo nada por lo que nada salió mal.
-		return true;
+	while (myBuf[i] != 0) {
+		buffer_write(b, myBuf[i]);
+		i++;
 	}
-
-	for (int i = 0; i < bufSize; i++) {
-		if ((c = buffer_read(b)) == 0) {
-			break;
-		}
-		buf[i] = c;
-	}
-
-	return c != 0;
 }
 
 bool writeToTransfBuf (buffer *b, buffer *bOut, int quantity) {
@@ -34,31 +40,45 @@ bool writeToTransfBuf (buffer *b, buffer *bOut, int quantity) {
 	}
 
 	for (int i = 0; i < quantity; i++) {
-		if ((c = buffer_read(b)) == 0) {
+		if ((c = readAndWrite(b, bOut)) == 0) {
 			break;
 		}
-		buffer_write(bOut, c);
 	}
 
 	return c != 0;
 
 }
 
-bool matchFormat (char *format, buffer *b) {
+bool matchFormat (char *format, buffer *b, buffer *bOut, char *prefix) {
 	int i = 0;
+	int prefixLength = 0;
 
 	while (format[i] != 0) {
 		if (PEEK_UP_CHAR(b) != toupper(format[i])) { // Incluye escenario en que c es 0.
 			break;
 		}
-		buffer_read(b);
+		readAndWrite(b, bOut);
 		i++;
+	}
+
+	if (format[i] != 0 && PEEK_UP_CHAR(b) == 0) {
+		while (i > 0) { // Vuelvo a escribir en el buffer lo que consumí en la función.
+			i--;
+			buffer_write_reserved(b, format[i]);
+		}
+
+		prefixLength = strlen(prefix);
+
+		while (prefixLength > 0) {
+			prefixLength--;
+			buffer_write_reserved(b, prefix[prefixLength]);
+		}
 	}
 
 	return format[i] == 0;
 }
 
-bool getNumber (int *number, buffer *b) {
+bool getNumber (int *number, buffer *b, buffer *bOut) {
 	uint8_t c = buffer_peek(b);
 	int currentNum = 0;
 
@@ -68,7 +88,7 @@ bool getNumber (int *number, buffer *b) {
 
 	do {
 		currentNum = (10 * currentNum) + (c - '0');
-		buffer_read(b);
+		readAndWrite(b, bOut);
 	} while (isdigit((c = buffer_peek(b))));
 
 	*number = currentNum;
@@ -76,7 +96,7 @@ bool getNumber (int *number, buffer *b) {
 	return true;
 }
 
-bool getHexNumber (int *number, buffer *b) {
+bool getHexNumber (int *number, buffer *b, buffer *bOut) {
 	uint8_t c = buffer_peek(b);
 	int currentNum = 0;
 
@@ -86,7 +106,7 @@ bool getHexNumber (int *number, buffer *b) {
 
 	do {
 		currentNum = (16 * currentNum) + hexCharToDec(c);
-		buffer_read(b);
+		readAndWrite(b, bOut);
 	} while (isxdigit((c = buffer_peek(b))));
 
 	*number = currentNum;
@@ -101,49 +121,13 @@ static int hexCharToDec (char c) {
 	return toupper(c) - 'A' + 10;
 }
 
-bool checkEmptyLine (buffer *b) {
-	uint8_t c;
-
-	// Supongo que acepto \r\n o \n para final de línea.
-	if ((c = buffer_peek(b)) == '\r') {
-		buffer_read(b);
-		c = buffer_peek(b);
-	}
-
-	if (c != '\n') {
-		return false;
-	}
-	buffer_read(b);
-
-	return true;
-}
-
-bool checkLF (buffer *b) {
-	uint8_t c;
-
-	if ((c = buffer_peek(b)) != '\n') {
-		return false;
-	}
-	buffer_read(b);
-
-	return true;
+bool checkLF (buffer *b, buffer *bOut, char *prefix) {
+	return matchFormat ("\n", b, bOut, prefix);
 }
 
 
-bool checkCRLF (buffer *b) {
-	uint8_t c;
-
-	if ((c = buffer_peek(b)) != '\r') {
-		return false;
-	}
-	buffer_read(b);
-
-	if ((c = buffer_peek(b)) != '\n') {
-		return false;
-	}
-	buffer_read(b);
-
-	return true;
+bool checkCRLF (buffer *b, buffer *bOut, char *prefix) {
+	return matchFormat ("\r\n", b, bOut, prefix);
 }
 
 bool writeToStdout (int length, buffer *b) {

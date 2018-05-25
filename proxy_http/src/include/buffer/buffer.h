@@ -85,6 +85,13 @@ typedef struct buffer buffer;
 struct buffer {
     uint8_t *data;
 
+    /** límite inferior del buffer - Agregado a la implementación de Juan.
+     * Entre data e infLimit paso a tener una zona reservada.
+     * Esta zona la usa cuando voy a querer poner algo al comienzo del buffer
+     * moviendo el puntero read dentro de la zona reservada,
+     */
+    uint8_t *infLimit;
+
     /** límite superior del buffer. inmutable */
     uint8_t *limit;
 
@@ -100,6 +107,13 @@ struct buffer {
  */
 void
 buffer_init(buffer *b, const size_t n, uint8_t *data);
+
+/**
+ * inicializa el buffer sin utilizar el heap.
+ * Como la implementación de buffer_init pero con mí límite de zona reservada.
+ */
+void
+buffer_init_r(buffer *b, const size_t n0, const size_t n, uint8_t *data);
 
 /**
  * Retorna un puntero donde se pueden escribir hasta `*nbytes`.
@@ -127,6 +141,33 @@ buffer_read(buffer *b);
 uint8_t
 buffer_peek(buffer *b);
 
+/**
+ * función propia - como buffer_can_write pero en zona reservada
+ * y en sentido inverso.
+ */
+bool
+buffer_can_write_reserved(buffer *b);
+
+/**
+ * Veo si el puntero de read está en zona reservada - función propia.
+ */
+bool
+is_reserved(buffer *b);
+
+/**
+ * función propia - como buffer_write_adv pero en zona reservada
+ * y en sentido inverso.
+ */
+void
+buffer_write_adv_reserved(buffer *b, const ssize_t bytes);
+
+/**
+ * función propia - como buffer_write pero en zona reservada
+ * y en sentido inverso.
+ */
+void
+buffer_write_reserved(buffer *b, uint8_t c);
+
 /** escribe un byte */
 void
 buffer_write(buffer *b, uint8_t c);
@@ -150,6 +191,5 @@ buffer_can_read(buffer *b);
 /** retorna true si se pueden escribir bytes en el buffer */
 bool
 buffer_can_write(buffer *b);
-
 
 #endif
