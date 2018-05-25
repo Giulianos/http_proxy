@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+
 #include <selector/selector.h>
 
 void
@@ -98,6 +99,7 @@ main(const int argc, const char * argv[])
         /** exit with error */
         return 1;
     }
+
 
     for(;;) {
         err_msg = NULL;

@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <errno.h>
-#include "myParserUtils.h"
+#include <myParserUtils/myParserUtils.h>
 
 // Códigos de status
 #define STATUS_OK 200

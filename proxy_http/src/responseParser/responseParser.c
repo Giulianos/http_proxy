@@ -1,4 +1,4 @@
-#include <request-response-parser/httpResponse.h>
+#include <responseParser/responseParser.h>
 
 static bool checkResponseInner (ResponseData *rData, buffer *b, buffer *bOut);
 // Prototipos Start Line

@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <errno.h>
-#include "myParserUtils.h"
+#include <myParserUtils/myParserUtils.h>
 
 #define VERSION_TEXT_SIZE 3
 // HTTP/*.* - 8 caracteres
