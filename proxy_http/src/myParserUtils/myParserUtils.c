@@ -9,7 +9,7 @@ uint8_t readAndWrite (buffer *b, buffer *bOut) {
 	uint8_t c = buffer_read(b);
 
 	if (!isReserved && c != 0) {
-		buffer_write(bOut, (c = buffer_read(b)));
+		buffer_write(bOut, c);
 	}
 
 	return c;

@@ -2,130 +2,198 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static void assertSpaces (buffer *b);
-static void assertWriteToBuf (buffer *b);
-static void assertFormat (buffer *b);
-static void assertNumber (buffer *b);
-static void assertHexNumber (buffer *b);
-static void assertEmptyLine (buffer *b);
-
-#define N(x) (sizeof(x)/sizeof((x)[0]))
+static void assertReadAndWrite (buffer *b, buffer *bOut);
+static void assertSpaces (buffer *b, buffer *bOut);
+static void assertWriteToBuffer (buffer *bOut);
+static void assertWriteToTransfBuf (buffer *b, buffer *bOut);
+static void assertFormatNormal (buffer *b, buffer *bOut);
+static void assertFormatMissing (buffer *b, buffer *bOut);
+static void assertFormatPrefix (buffer *b, buffer *bOut);
+static void assertNumber (buffer *b, buffer *bOut);
+static void assertHexNumber (buffer *b, buffer *bOut);
+static void reset (buffer *b, buffer *bOut);
 
 int main (int argc, char *argv[]) {
 	struct buffer b;
-	uint8_t direct_buff[30];
-	buffer_init(&b, N(direct_buff), direct_buff);
+	uint8_t direct_buff[100];
+	int totalSpace = 100;
+	int reservedSpace = 10;
+	struct buffer bOut;
+	uint8_t direct_buff_out[30];
+	int totalSpaceOut = 30;
+	buffer_init_r(&b, reservedSpace, totalSpace, direct_buff);
+	buffer_init(&bOut, totalSpaceOut, direct_buff_out);
 
-	assertSpaces(&b);
+	assertReadAndWrite(&b, &bOut);
 
-	buffer_reset(&b);
-	assertWriteToBuf(&b);
+	reset(&b, &bOut);
+	assertSpaces(&b, &bOut);
 
-	buffer_reset(&b);
-	assertFormat(&b);
+	reset(&b, &bOut);
+	assertWriteToBuffer(&bOut);
 
-	buffer_reset(&b);
-	assertNumber(&b);
+	reset(&b, &bOut);
+	assertWriteToTransfBuf(&b, &bOut);
 
-	buffer_reset(&b);
-	assertHexNumber(&b);
+	reset(&b, &bOut);
+	assertFormatNormal(&b, &bOut);
 
-	buffer_reset(&b);
-	assertEmptyLine(&b);
+	reset(&b, &bOut);
+	assertFormatMissing(&b, &bOut);
+
+	reset(&b, &bOut);
+	assertFormatPrefix(&b, &bOut);
+
+	reset(&b, &bOut);
+	assertNumber(&b, &bOut);
+
+	reset(&b, &bOut);
+	assertHexNumber(&b, &bOut);
 
 	return 0;
 }
 
-static void assertSpaces (buffer *b) {
-	buffer_write(b, ' ');
+static void assertReadAndWrite (buffer *b, buffer *bOut) {
+	assert(readAndWrite(b, bOut) == 0);
+
+	buffer_write_reserved(b, 'H');
+	buffer_write(b, 'O');
+	buffer_write(b, 'L');
+
+	assert(readAndWrite(b, bOut) == 'H');
+	// Si leo algo de la zona reservada de b, no lo paso a bOut.
+	assert(buffer_read(bOut) == 0);
+	// Si leo algo de la zona normal de b, lo paso a bOut.
+	assert(readAndWrite(b, bOut) == 'O');
+	assert(buffer_read(bOut) == 'O');
+	assert(readAndWrite(b, bOut) == 'L');
+	assert(buffer_read(bOut) == 'L');
+}
+
+static void assertSpaces (buffer *b, buffer *bOut) {
 	buffer_write(b, ' ');
 	buffer_write(b, 'a');
-	moveThroughSpaces(b);
+	moveThroughSpaces(b, bOut);
 	assert(buffer_read(b) == 'a');
+	assert(buffer_read(bOut) == ' ');
+
+	buffer_write(b, '\t');
 	buffer_write(b, ' ');
 	buffer_write(b, '2');
-	moveThroughSpaces(b);
+	moveThroughSpaces(b, bOut);
+	assert(buffer_read(bOut) == '\t');
 	assert(buffer_read(b) == '2');
+
 	buffer_write(b, ' ');
 	buffer_write(b, '\t');
 	buffer_write(b, ' ');
 	buffer_write(b, 'b');
-	moveThroughSpaces(b);
+	moveThroughSpaces(b, bOut);
 	assert(buffer_read(b) == 'b');
 }
 
-static void assertWriteToBuf (buffer *b) {
-	char buf[2] = {0};
+static void assertWriteToBuffer (buffer *bOut) {
+	writeToBuf("Hola", bOut);
+	assert(buffer_read(bOut) == 'H');
+	assert(buffer_read(bOut) == 'o');
+	assert(buffer_read(bOut) == 'l');
+	assert(buffer_read(bOut) == 'a');
+	assert(buffer_read(bOut) == 0);
+}
 
-	assert(buf[0] == 0);
-	assert(buf[1] == 0);
-	buffer_write(b, 'b');
+static void assertWriteToTransfBuf (buffer *b, buffer *bOut) {
+	char *msg = "Hola";
+	writeToBuf(msg, b);
+	assert(writeToTransfBuf(b, bOut, strlen(msg)));
+	assert(buffer_read(bOut) == 'H');
+	assert(buffer_read(bOut) == 'o');
+	assert(buffer_read(bOut) == 'l');
+	assert(buffer_read(bOut) == 'a');
+	assert(buffer_read(bOut) == 0);
+}
+
+static void assertFormatNormal (buffer *b, buffer *bOut) {
+	char *msg = "Hola";
+	char *msg2 = "HOlA";
+	writeToBuf(msg2, b);
+	assert(matchFormat(msg, b, bOut, ""));
+
+	for (int i = 0; msg[i] != 0; i++) {
+		assert(toupper(buffer_read(bOut)) == toupper(msg[i]));
+	}
+	assert(buffer_read(bOut) == 0);
+}
+
+static void assertFormatMissing (buffer *b, buffer *bOut) {
+	char *msg = "Hola";
+	char *msg2 = "HOl";
+	writeToBuf(msg2, b);
+	assert(!matchFormat(msg, b, bOut, ""));
 	buffer_write(b, 'a');
-	assert(writeToBuf(buf, sizeof(buf)/sizeof(buf[0]), b));
-	assert(buf[0] == 'b');
-	assert(buf[1] == 'a');
-	buffer_write(b, 'c');
-	assert(writeToBuf(buf, 1, b));
-	assert(buf[0] == 'c');
-	assert(buf[1] == 'a');
+	assert(matchFormat(msg, b, bOut, ""));
+
+	for (int i = 0; msg[i] != 0; i++) {
+		assert(toupper(buffer_read(bOut)) == toupper(msg[i]));
+	}
+	assert(buffer_read(bOut) == 0);
 }
 
-static void assertFormat (buffer *b) {
-	buffer_write(b, 't');
-	buffer_write(b, 'E');
-	buffer_write(b, 's');
-	buffer_write(b, 'T');
-	assert(matchFormat("T", b));
-	assert(!matchFormat("Ea", b));
-	assert(matchFormat("st", b));
+static void assertFormatPrefix (buffer *b, buffer *bOut) {
+	char *msg = "Mundo";
+	char *msg2 = "MUnd";
+	char *msg3 = "Hola Mundo";
+	char *prefix = "HolA ";
+	writeToBuf(msg2, b);
+	// Paso a tener "MUnd" en zona normal de b.
+	assert(!matchFormat(msg, b, bOut, prefix));
+	// Paso a tener "MUnd" en zona reservada de b y "MUnd" en zona normal de bOut.
+	buffer_write(b, 'O');
+	// Paso a tener "MUnd" en zona reservada de b y "O" en zona normal.
+	assert(matchFormat(msg3, b, bOut, ""));
+	// Paso a tener "MUndO" en zona normal de bOut y nada en b.
+
+	for (int i = 0; msg[i] != 0; i++) {
+		assert(toupper(buffer_read(bOut)) == toupper(msg[i]));
+	}
+	assert(buffer_read(bOut) == 0);
 }
 
-static void assertNumber (buffer *b) {
+static void assertNumber (buffer *b, buffer *bOut) {
 	int number;
 
 	buffer_write(b, 'g');
-	assert(!getNumber(&number, b));
+	assert(!getNumber(&number, b, bOut));
 	assert(buffer_read(b) == 'g');
 	buffer_write(b, '5');
 	buffer_write(b, '4');
 	buffer_write(b, 'a');
-	assert(getNumber(&number, b));
+	assert(getNumber(&number, b, bOut));
 	assert(number == 54);
 	assert(buffer_read(b) == 'a');
 }
 
-static void assertHexNumber (buffer *b) {
+static void assertHexNumber (buffer *b, buffer *bOut) {
 	int number;
 
 	buffer_write(b, 'g');
-	assert(!getHexNumber(&number, b));
+	assert(!getHexNumber(&number, b, bOut));
 	assert(buffer_read(b) == 'g');
 	buffer_write(b, '8');
-	assert(getHexNumber(&number, b));
+	assert(getHexNumber(&number, b, bOut));
 	assert(number == 8);
 	buffer_write(b, 'c');
-	assert(getHexNumber(&number, b));
+	assert(getHexNumber(&number, b, bOut));
 	assert(number == 12);
 	buffer_write(b, 'C');
-	assert(getHexNumber(&number, b));
+	assert(getHexNumber(&number, b, bOut));
 	assert(number == 12);
 	buffer_write(b, '1');
 	buffer_write(b, 'b');
-	assert(getHexNumber(&number, b));
+	assert(getHexNumber(&number, b, bOut));
 	assert(number == 27);
 }
 
-static void assertEmptyLine (buffer *b) {
-	buffer_write(b, 'a');
-	assert(!checkEmptyLine(b));
-	assert(!checkEmptyLine(b)); // To check the 'a' stays in buffer.
-	buffer_read(b);
-	buffer_write(b, '\n');
-	assert(checkEmptyLine(b));
-	buffer_write(b, '\n');
-	buffer_write(b, '\r');
-	assert(checkEmptyLine(b));
-	buffer_write(b, '\n');
-	assert(!checkLF(b));
-	assert(checkCRLF(b));
+static void reset (buffer *b, buffer *bOut) {
+	buffer_reset(b);
+	buffer_reset(bOut);
 }

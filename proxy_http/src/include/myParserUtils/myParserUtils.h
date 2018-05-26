@@ -13,10 +13,6 @@
 #define READ_DOWN_CHAR(b, bOut) tolower(readAndWrite(b, bOut))
 #define PEEK_UP_CHAR(b) toupper(buffer_peek(b))
 
-// Cuando comparo con formato, si al leer del buffer encuentro un 0,
-// me guardo el índice. Sino, lo pongo en -1.
-#define FORMAT_COMPARISON_END -1
-
 uint8_t readAndWrite (buffer *b, buffer *bOut);
 void moveThroughSpaces (buffer *b, buffer *bOut);
 void writeToBuf (char *myBuf, buffer *b);

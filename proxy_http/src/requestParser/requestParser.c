@@ -108,7 +108,6 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				if (!checkCRLF(bIn, bOut, "")) {
 					success = false;
 				} else {
-					writeToBuf ("LOCALHOST: TRUE\r\n", bOut);
 					rData->parserState = LOCALHOST_HEADER_CHECK;
 				}
 				break;
@@ -316,13 +315,19 @@ static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 /**               COMIENZO FUNCIONES DE HEADER                  **/
 
 static bool checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut) {
-	if (matchFormat("LOCALHOST:", bIn, bOut, "")) {
-		rData->isLocalHost = true;
+	if (buffer_peek(b) != 'L') {
+		writeToBuf ("LOCALHOST: TRUE\r\n", bOut);
+	} else {
+		if (matchFormat("LOCALHOST:", bIn, bOut, "")) {
+			rData->isLocalHost = true;
+		}
 	}
+
 	if (rData->isLocalHost == false && buffer_peek(bIn) == 0)  {
 		rData->isBufferEmpty = true;
 		return false;
 	}
+
 	return rData->isLocalHost;
 }
 

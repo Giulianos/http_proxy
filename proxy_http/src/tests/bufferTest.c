@@ -126,7 +126,7 @@ static void assertCompactLimit (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	buffer_read(b);
+	assert(buffer_read(b) == 'H');
 	//            R=2/W=2
 	//            ↓
 	//    +---+---+---+---+---+---+
