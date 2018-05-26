@@ -15,11 +15,4 @@ remote_block(struct selector_key * key);
 void
 remote_close(struct selector_key * key);
 
-fd_handler remote_handlers = {
-    .handle_read = remote_read,
-    .handle_write = remote_write,
-    .handle_close = remote_close,
-    .handle_block = remote_block,
-};
-
 #endif

@@ -23,16 +23,16 @@ client_new(const struct client_config * config);
 
 /** Handlers for client's events */
 void
-client_read(const struct selector_key * key);
+client_read(struct selector_key * key);
 
 void
-client_write(const struct selector_key * key);
+client_write(struct selector_key * key);
 
 void
-client_block(const struct selector_key * key);
+client_block(struct selector_key * key);
 
 void
-client_close(const struct selector_key * key);
+client_close(struct selector_key * key);
 
 
 #endif

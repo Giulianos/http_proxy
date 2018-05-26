@@ -1,10 +1,11 @@
-#include <request_parser/request_parser.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <printf.h>
 #include <memory.h>
+#include <buffer/buffer.h>
+#include <request_parser/request_parser.h>
 
-#define REQUEST_PARSER_BUFFER_SIZE 100
+#define REQUEST_PARSER_BUFFER_SIZE 8192
 #define HEADER_NAME_PREALLOC 20
 
 
@@ -15,13 +16,16 @@ enum request_parser_state {
     HEADER,
     HEADER_VALUE,
     BODY,
+    SPAC_HVALUE,
 };
 
 typedef enum request_parser_state request_parser_state_t;
 
 struct request_parser {
-  int in_fd;
   request_parser_state_t state;
+
+  /** Buffers */
+  buffer * in_buffer;
   buffer * out_buffer;
 
   /** Callbacks */
@@ -35,6 +39,8 @@ struct request_parser {
   bool * ready;
 };
 
+static void
+request_parser_dump(uint8_t * out, uint8_t * in, size_t bytes);
 
 
 request_parser_t
@@ -44,14 +50,15 @@ request_parser_new(request_parser_config_t config)
   if(parser == NULL)
     return NULL;
 
-  parser->in_fd = config->in_fd;
+  parser->in_buffer = config->in_buffer;
   parser->out_buffer = config->out_buffer;
   parser->host_found_callback = config->host_found_callback;
+  parser->ready = config->ready_flag;
+  parser->data = config->data;
   parser->current_header_name = NULL;
   parser->current_header_value = NULL;
   parser->header_index = 0;
   parser->state = METHOD;
-  parser->ready = config->ready_flag;
   *(parser->ready) = false;
   return parser;
 }
@@ -73,95 +80,101 @@ request_parser_destroy(request_parser_t parser)
 int
 request_parser_parse(request_parser_t parser)
 {
-  /** Buffer used in the parsing */
-  uint8_t temp_buffer[REQUEST_PARSER_BUFFER_SIZE];
 
-  /** Check how many bytes to parse with temp_buffer and
+  /** Check how many bytes to parse with in_buffer and
    *  out_buffer size restrictions.
    */
-  size_t space_in_buffer;
-  uint8_t  * buffer_ptr = buffer_write_ptr(parser->out_buffer, &space_in_buffer);
-  space_in_buffer = space_in_buffer > REQUEST_PARSER_BUFFER_SIZE ? REQUEST_PARSER_BUFFER_SIZE : space_in_buffer;
+  size_t in_buffer_available;
+  uint8_t  * in_buffer_ptr = buffer_read_ptr(parser->in_buffer, &in_buffer_available);
+  size_t out_buffer_space;
+  uint8_t  * out_buffer_ptr = buffer_write_ptr(parser->out_buffer, &out_buffer_space);
 
-  /** Read the bytes from the file descriptor into the temp_buffer */
-  ssize_t read_bytes = read(parser->in_fd, temp_buffer, space_in_buffer);
+  printf("I have %d in pre_req and %d space in post_req\n", in_buffer_available, out_buffer_space);
 
-  memcpy(buffer_ptr, temp_buffer, read_bytes);
+  size_t bytes_to_parse = (in_buffer_available < out_buffer_space) ? in_buffer_available : out_buffer_space;
 
   size_t current = 0;
 
-  while(current <= read_bytes) {
+  printf("parsing request...\n");
+
+  while(current <= bytes_to_parse) {
     switch (parser->state) {
       case METHOD:
-        if(isalpha(temp_buffer[current])) {
+        if(isalpha(in_buffer_ptr[current])) {
           /** For now, just consume the bytes */
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
-        } else if(temp_buffer[current] == ' ') {
+        } else if(in_buffer_ptr[current] == ' ') {
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
           parser->state = TARGET;
         }
         break;
       case TARGET:
         /** For now, just consume every byte */
-        if(temp_buffer[current] == ' ') {
+        if(in_buffer_ptr[current] == ' ') {
           parser->state = VERSION;
         }
         current++;
-        buffer_write_adv(parser->out_buffer, 1);
         break;
       case VERSION:
-        if(temp_buffer[current] == '\n' || temp_buffer[current] == '\r') {
-          if(temp_buffer[current+1] == '\n') {
+        if(in_buffer_ptr[current] == '\n' || in_buffer_ptr[current] == '\r') {
+          if(in_buffer_ptr[current+1] == '\n') {
             current+=2;
-            buffer_write_adv(parser->out_buffer, 2);
           } else {
             current++;
-            buffer_write_adv(parser->out_buffer, 1);
           }
           parser->state = HEADER;
         } else {
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
         }
         break;
       case HEADER:
-        if(temp_buffer[current] == '\n') {
+        if(in_buffer_ptr[current] == '\n') {
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
           // parser->state = BODY;
           *(parser->ready) = true;
+          printf("Request complete!!\n");
+          /** Dump the parsed in_buffer bytes into the out_buffer */
+          memcpy(out_buffer_ptr, in_buffer_ptr, bytes_to_parse);
+          buffer_read_adv(parser->in_buffer, bytes_to_parse);
+          buffer_write_adv(parser->out_buffer, bytes_to_parse);
           return 0;
         }
-        if(temp_buffer[current] == ':') {
+        if(in_buffer_ptr[current] == ':') {
           if(parser->header_index%HEADER_NAME_PREALLOC == 0) {
-            parser->current_header_name = realloc(parser->current_header_name, HEADER_NAME_PREALLOC+1);
+            parser->current_header_name = realloc(parser->current_header_name, HEADER_NAME_PREALLOC+current);
           }
           parser->current_header_name[parser->header_index] = '\0';
           parser->header_index = 0;
-          parser->state = HEADER_VALUE;
+          parser->state = SPAC_HVALUE;
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
         } else {
           if(parser->header_index%HEADER_NAME_PREALLOC == 0) {
-            parser->current_header_name = realloc(parser->current_header_name, HEADER_NAME_PREALLOC+1);
+            parser->current_header_name = realloc(parser->current_header_name, HEADER_NAME_PREALLOC+current);
           }
-          parser->current_header_name[parser->header_index] = temp_buffer[current];
+          parser->current_header_name[parser->header_index] = in_buffer_ptr[current];
           parser->header_index++;
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
         }
         break;
-      case HEADER_VALUE:
-        if(temp_buffer[current] == '\n') {
+      case SPAC_HVALUE:
+        if(in_buffer_ptr[current] != ' ') {
+          parser->state = HEADER_VALUE;
+        } else {
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
+        }
+      case HEADER_VALUE:
+        if(in_buffer_ptr[current] == '\n' || in_buffer_ptr[current] == '\r') {
+          if(in_buffer_ptr[current+1] == '\n') {
+            current+=2;
+          } else {
+            current++;
+          }
           if(parser->header_index%HEADER_NAME_PREALLOC == 0) {
-            parser->current_header_value = realloc(parser->current_header_value, HEADER_NAME_PREALLOC+1);
+            parser->current_header_value = realloc(parser->current_header_value, HEADER_NAME_PREALLOC+current);
           }
           parser->current_header_value[parser->header_index] = '\0';
           parser->header_index = 0;
+          printf("Read a header, <%s>:%s\n", parser->current_header_name, parser->current_header_value);
           /** Check if read header is Host */
           if(strcmp(parser->current_header_name, "Host") == 0) {
             if(parser->host_found_callback != NULL) {
@@ -176,17 +189,20 @@ request_parser_parse(request_parser_t parser)
           parser->state = HEADER;
         } else {
           if(parser->header_index%HEADER_NAME_PREALLOC == 0) {
-            parser->current_header_value = realloc(parser->current_header_value, HEADER_NAME_PREALLOC+1);
+            parser->current_header_value = realloc(parser->current_header_value, HEADER_NAME_PREALLOC+current);
           }
-          parser->current_header_value[parser->header_index] = temp_buffer[current];
+          parser->current_header_value[parser->header_index] = in_buffer_ptr[current];
           parser->header_index++;
           current++;
-          buffer_write_adv(parser->out_buffer, 1);
         }
         break;
       case BODY:break;
     }
   }
 
+  /** Dump the parsed in_buffer bytes into the out_buffer */
+  memcpy(out_buffer_ptr, out_buffer_ptr, bytes_to_parse);
+  buffer_read_adv(parser->in_buffer, bytes_to_parse);
+  buffer_write_adv(parser->out_buffer, bytes_to_parse);
   return 0;
 }

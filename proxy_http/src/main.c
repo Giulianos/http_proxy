@@ -9,15 +9,11 @@
 #include <stdlib.h>
 
 #include <selector/selector.h>
+#include <client/client.h>
+#include "client/remote_handlers.h"
 
 void
 listen_read_handler(struct selector_key *key);
-void
-client_block_handler(struct selector_key *key);
-void
-client_read_handler(struct selector_key *key);
-void
-example_blocking_func(const void * data);
 
 int
 main(const int argc, const char * argv[])
@@ -111,23 +107,37 @@ main(const int argc, const char * argv[])
 
 }
 
+fd_handler client_handlers = {
+    .handle_read = client_read,
+    .handle_write = client_write,
+    .handle_close = client_close,
+    .handle_block = client_block,
+};
+
 void
 listen_read_handler(struct selector_key *key)
 {
     struct sockaddr_storage       client_addr;
     socklen_t                     client_addr_len = sizeof(client_addr);
 
-    const int client = accept(key->fd, (struct sockaddr*) &client_addr,
+    const int client_socket = accept(key->fd, (struct sockaddr*) &client_addr,
                               &client_addr_len);
 
-    if(client == -1) {
+    if(client_socket == -1) {
         /** return with error */
-        close(client);
+        close(client_socket);
         return;
     }
 
-    printf("Client accepted, closing connection...\n");
+    /** Create a client and add it to the selector */
+    struct client_config config = {
+        .selector = key->s,
+        .fd = client_socket,
+    };
 
-    close(client);
+    client_t client = client_new(&config);
+
+    selector_fd_set_nio(client_socket);
+    selector_register(key->s, client_socket, &client_handlers, OP_READ, client);
 
 }

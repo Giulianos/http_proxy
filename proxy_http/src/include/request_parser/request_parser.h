@@ -4,7 +4,7 @@
 #include <buffer/buffer.h>
 
 struct request_parser_config {
-    int in_fd;
+    buffer * in_buffer;
     buffer * out_buffer;
     bool * ready_flag;
 

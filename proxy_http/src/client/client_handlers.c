@@ -4,95 +4,91 @@
 #include <netinet/in.h>
 #include <memory.h>
 #include <netdb.h>
+#include <printf.h>
+#include <errno.h>
+#include <arpa/inet.h>
 #include "client_private.h"
 #include "remote_handlers.h"
 
+/** Remote handlers */
+fd_handler remote_handlers = {
+    .handle_read = remote_read,
+    .handle_write = remote_write,
+    .handle_close = remote_close,
+    .handle_block = remote_block,
+};
+
 void
-client_read(const struct selector_key * key)
+client_read(struct selector_key * key)
 {
+  client_t client = GET_CLIENT(key);
+  switch(client->state) {
+    case NO_ORIGIN:
+      if(buffer_can_write(&client->pre_req_parse_buf)) {
+        /** Get the buffer pointer and space available */
+        size_t buffer_space;
+        uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
+        ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
+        buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
+        /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
+        request_parser_parse(client->request_parser);
+      } else {
+        /** If buffer is full, stop reading from client */
+        selector_set_interest(client->selector, client->client_fd, OP_NOOP);
+      }
+      break;
+    case SEND_REQ:
+      if(buffer_can_write(&client->pre_req_parse_buf)) {
+        /** Get the buffer pointer and space available */
+        size_t buffer_space;
+        uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
+        ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
+        buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
+        /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
+        request_parser_parse(client->request_parser);
+        /** As i wrote to the buffer, write to origin */
+        selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
+      } else {
+        /** If buffer is full, stop reading from client */
+        selector_set_interest(client->selector, client->client_fd, OP_NOOP);
+      }
+      break;
+  }
+}
+
+void
+client_write(struct selector_key * key) {
   client_t client = GET_CLIENT(key);
 
   switch(client->state) {
-    case NO_HOST:
-    case READ_REQ:
-      /**
-       * request_parser_parse(client->request_parser,
-       *                      key->fd,
-       *                      client->in_buffer);
-       *
-       * A callback should be called when the host is found,
-       * in this case is client_set_host.
-       *
-       * The parser should set the client->request_complete
-       * flag accordingly.
-       *
-       * */
-      break;
-    case NO_REMOTE:
-      /**
-       * http_response_build(503, out_buffer, &response_complete);
-       * */
-      selector_set_interest(key->s, key->fd, OP_WRITE);
-      break;
-    case ERROR:
-      /**
-       * Check error code (client->err) and build apropiate response
-       *
-       * http_response_build(5xx, out_buffer, &response_complete);
-       * */
-      selector_set_interest(key->s, key->fd, OP_WRITE);
-      break;
-    /** In any other state, we do nothing */
-    case HOST_RESOLV:
-    case READ_RESP:break;
-  }
-}
-
-void
-client_write(const struct selector_key * key) {
-  client_t client = GET_CLIENT(key);
-
-  /** TODO:
-   * - check error state */
-
-  /** If there are chars in the output buffer we send them to the client */
-  if(buffer_can_read(&client->out_buffer)) {
-    size_t read_quantity;
-    uint8_t * read_ptr = buffer_read_ptr(&client->out_buffer, &read_quantity);
-    ssize_t written = write(key->fd, (const void *)read_ptr, read_quantity);
-    if(written > 0) {
-      buffer_read_adv(&client->out_buffer, written);
-    }
-  } else if(client->response_complete) {
-    switch (client->state) {
-      case READ_RESP:
-        /** Go to intial state, to support keep-alive */
+    case READ_RESP:
+      if(buffer_can_read(&client->post_res_parse_buf)) {
+        printf("Sending response...\n");
+        size_t buffer_size;
+        uint8_t * buffer_ptr = buffer_read_ptr(&client->post_res_parse_buf, &buffer_size);
+        ssize_t written_bytes = write(client->client_fd, buffer_ptr, buffer_size);
+        buffer_read_adv(&client->post_res_parse_buf, written_bytes);
+        /** As i read from the buffer, read from the origin */
+        selector_set_interest(client->selector, client->origin_fd, OP_READ);
+      } else if(client->response_complete) {
+        /** If the response is complete, keep-alive! */
         client_restart_state(client);
-        break;
-      case NO_REMOTE:
-        /** Terminate the client */
-        client_terminate(client);
-        break;
-      /** In any other state, we do nothing */
-      case NO_HOST:
-      case HOST_RESOLV:
-      case READ_REQ:
-      case ERROR:
-        break;
-    }
+      }
+      break;
   }
+
 }
 
 void
-client_block(const struct selector_key * key)
+client_block(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
 
   /** Connect to remote host */
 
-  int remote_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (remote_sock < 0) {
-    client->state = NO_HOST;
+  int origin_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (origin_socket < 0) {
+    client->state = ERROR;
     return;
   }
 
@@ -104,25 +100,28 @@ client_block(const struct selector_key * key)
    * connection succeeds.
    *
    */
-  struct sockaddr_in remote;
-  memset(&remote, 0, sizeof(remote));
 
-  remote.sin_family      = AF_INET;
-  remote.sin_port        = htons(client->host.port);
-  remote.sin_addr.s_addr = *((unsigned long *)client->host.hostnm->h_addr_list[0]);
-
+  /** Register origin fd to write */
+  selector_fd_set_nio(origin_socket);
+  selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
+  client->state = SEND_REQ;
+  client->origin_fd = origin_socket;
 
   /** Non-blocking connect */
-  selector_fd_set_nio(remote_sock);
 
-  selector_register(client->selector, remote_sock, &remote_handlers, OP_WRITE, (void*)client);
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family      = AF_INET;
+  addr.sin_addr.s_addr = inet_addr("216.58.222.46");
+  addr.sin_port        = htons(80);
 
-  connect(remote_sock, (struct sockaddr *)&remote, sizeof(remote));
-
+  connect(origin_socket, (const struct sockaddr*)&addr, sizeof(struct sockaddr));
+  printf("Connecting to origin...\n");
 }
 
 void
-client_close(const struct selector_key * key)
+client_close(struct selector_key * key)
 {
+  printf("Bye!\n");
   client_free_resources(GET_CLIENT(key));
 }

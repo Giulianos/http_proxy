@@ -1,4 +1,10 @@
 #include <client/client.h>
+#include <printf.h>
+#include <sys/socket.h>
+#include <memory.h>
+#include <errno.h>
+#include <netdb.h>
+#include <response_parser/response_parser.h>
 #include "remote_handlers.h"
 #include "client_private.h"
 
@@ -6,25 +12,25 @@ void
 remote_read(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
-
   switch(client->state) {
+    /** This is executed infinitly, check! */
     case READ_RESP:
-      /**
-       * TODO:
-       *    response_parser_parse(client->response_parser,
-       *                          key->fd,
-       *                          client->out_buffer);
-       *
-       *    The parser should set the client->response_complete
-       *    flag accordingly.
-       * */
+      if(buffer_can_write(&client->pre_res_parse_buf)) {
+        size_t buffer_space;
+        uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_res_parse_buf, &buffer_space);
+        ssize_t read_bytes = read(client->origin_fd, buffer_ptr, buffer_space);
+        buffer_write_adv(&client->pre_res_parse_buf, read_bytes);
+        /** Parse the response. The parser dumps pre_res_parse_buf into post_res_parse_buf */
+        response_parser_parse(client->response_parser);
+        /** As i wrote to the buffer, write to the client */
+        selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+      } else {
+        /** If buffer is full, stop reading from origin */
+        selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
+      }
       break;
-    case NO_HOST:break;
-    case HOST_RESOLV:break;
-    case READ_REQ:break;
-    case NO_REMOTE:break;
-    case ERROR:break;
   }
+
 }
 
 void
@@ -33,23 +39,25 @@ remote_write(struct selector_key * key)
   client_t client = GET_CLIENT(key);
 
   switch(client->state) {
-    case READ_REQ:
-      if(buffer_can_read(&client->in_buffer)) {
-        size_t read_quantity;
-        uint8_t * read_ptr = buffer_read_ptr(&client->in_buffer, &read_quantity);
-        ssize_t written = write(key->fd, read_ptr, read_quantity);
-        if(written > 0) {
-          buffer_read_adv(&client->in_buffer, written);
-        }
+    case SEND_REQ:
+      if(buffer_can_read(&client->post_req_parse_buf)) {
+        printf("Sending request..\n");
+        size_t buffer_size;
+        uint8_t * buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
+        ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
+        buffer_read_adv(&client->post_req_parse_buf, written_bytes);
+        /** As i read from the buffer, read from the client */
+        selector_set_interest(client->selector, client->client_fd, OP_READ);
       } else if(client->request_complete) {
+        /** If the request is complete, write to the client and read from origin */
+        selector_set_interest(client->selector, client->origin_fd, OP_READ);
         client->state = READ_RESP;
+        printf("Ready sending request!\n");
+      } else {
+        /** If buffer is empty, stop writing to origin */
+        selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
       }
       break;
-    case NO_HOST:break;
-    case HOST_RESOLV:break;
-    case READ_RESP:break;
-    case NO_REMOTE:break;
-    case ERROR:break;
   }
 }
 
@@ -66,15 +74,6 @@ remote_close(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
 
-  switch(client->state) {
-    case NO_HOST:
-    case HOST_RESOLV:
-    case READ_REQ:
-    case READ_RESP:
-    case NO_REMOTE:
-    case ERROR:
-      selector_unregister_fd(key->s, key->fd);
-      client->state = NO_REMOTE;
-      break;
-  }
+  selector_unregister_fd(key->s, key->fd);
+  client->state = NO_ORIGIN;
 }
