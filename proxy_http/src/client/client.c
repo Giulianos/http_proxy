@@ -135,7 +135,7 @@ request_resolv_blocking(void *data) {
   pthread_detach(pthread_self());
 
   struct addrinfo hints = {
-      .ai_family    = AF_INET,    /* Allow IPv4 or IPv6 */
+      .ai_family    = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
       .ai_socktype  = SOCK_STREAM,  /* Datagram socket */
       .ai_flags     = AI_PASSIVE,   /* For wildcard IP address */
       .ai_protocol  = 0,            /* Any protocol */
@@ -144,16 +144,10 @@ request_resolv_blocking(void *data) {
       .ai_next      = NULL,
   };
 
-  char buff[7];
-  snprintf(buff, sizeof(buff), "%d",
-           ntohs(client->host.port));
-
-  getaddrinfo(client->host.fqdn, buff, &hints,
+  getaddrinfo(client->host.fqdn, NULL, &hints,
               &client->host.resolved);
 
   selector_notify_block(client->selector, client->client_fd);
-
-  free(data);
 
   return 0;
 }

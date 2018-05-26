@@ -24,13 +24,13 @@ main(const int argc, const char * argv[])
     selector_status  ss       = SELECTOR_SUCCESS;
     fd_selector      selector = NULL;
 
-    struct sockaddr_in addr;
+    struct sockaddr_in6 addr;
     memset(&addr, 0, sizeof(addr));
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port        = htons(port);
+    addr.sin6_family      = AF_INET6;
+    addr.sin6_addr = in6addr_any;
+    addr.sin6_port        = htons(port);
 
-    const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    const int server = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
     if(server < 0) {
         err_msg = "unable to create socket";
         /** exit with error */

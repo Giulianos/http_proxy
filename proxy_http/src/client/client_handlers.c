@@ -83,10 +83,16 @@ void
 client_block(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
+  struct addrinfo * res = client->host.resolved;
+  int status;
+  int origin_socket;
+
+  struct addrinfo * current = res;
+  char addr_str[50];
 
   /** Connect to remote host */
 
-  int origin_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  origin_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (origin_socket < 0) {
     client->state = ERROR;
     return;
@@ -102,21 +108,29 @@ client_block(struct selector_key * key)
    */
 
   /** Register origin fd to write */
+
+  printf("Trying connect...\n");
   selector_fd_set_nio(origin_socket);
   selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
 
+  /** Set port accordingly, now hardcoded */
+  if(res->ai_family == AF_INET) {
+    ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(80);
+  } else if(res->ai_family == AF_INET6) {
+    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(80);
+  }
+
+
   /** Non-blocking connect */
+  status = connect(origin_socket, res->ai_addr, res->ai_addrlen);
 
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family      = AF_INET;
-  addr.sin_addr.s_addr = inet_addr("216.58.222.46");
-  addr.sin_port        = htons(80);
-
-  connect(origin_socket, (const struct sockaddr*)&addr, sizeof(struct sockaddr));
-  printf("Connecting to origin...\n");
+  if(status == 0) {
+    printf("Connection to origin initiated!\n");
+  } else {
+    printf("Connection failed! (%s)\n", strerror(errno));
+  }
 }
 
 void
