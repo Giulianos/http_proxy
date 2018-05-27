@@ -1,6 +1,5 @@
 #include <client/client.h>
 #include <stdlib.h>
-#include <zconf.h>
 #include <memory.h>
 #include <limits/limits.h>
 #include <pthread.h>
