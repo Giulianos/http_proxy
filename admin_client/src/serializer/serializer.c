@@ -5,12 +5,13 @@
 /** serializers */
 
 unsigned char *
-serialize_int(unsigned char * buffer, int value)
+serialize_int(unsigned char * buffer, unsigned int value)
 {
-  buffer[0] = value >> 24;
-  buffer[1] = value >> 16;
-  buffer[2] = value >> 8;
-  buffer[3] = value;
+  unsigned char * ret = buffer;
+  buffer[0] = (unsigned char)(value >> 24 & 0xFF);
+  buffer[1] = (unsigned char)(value >> 16  & 0xFF);
+  buffer[2] = (unsigned char)(value >> 8  & 0xFF);
+  buffer[3] = (unsigned char)(value & 0xFF);
   return buffer + 4;
 }
 
@@ -35,6 +36,7 @@ serialize_string(unsigned char * buffer, char * str)
 unsigned char *
 serialize_msg(unsigned char * buffer, msg_t * msg)
 {
+  unsigned char * s = buffer;
   /** type serialization */
   buffer = serialize_char(buffer, msg->type);
   /** param serialization */
@@ -58,14 +60,14 @@ deserialize_int(unsigned char * buffer, int * value)
 }
 
 unsigned char *
-deserialize_char(unsigned char * buffer, unsigned char * value)
+deserialize_char(unsigned char * buffer, char * value)
 {
   *value = buffer[0];
   return buffer + 1;
 }
 
 unsigned char *
-deserialize_string(unsigned char * buffer, unsigned char * str)
+deserialize_string(unsigned char * buffer, char * str)
 {
   do {
     buffer = deserialize_char(buffer, str);

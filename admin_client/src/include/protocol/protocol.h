@@ -19,7 +19,7 @@
 typedef struct {
     unsigned char   type;
     unsigned char   param;
-    int             buffer_size;
+    unsigned int    buffer_size;
     unsigned char * buffer;
 } msg_t;
 

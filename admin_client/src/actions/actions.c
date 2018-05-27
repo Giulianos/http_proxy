@@ -11,7 +11,7 @@ send_credentials(unsigned char * pass)
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = SEND_CRED;
   msg->param = 0;
-  msg->buffer_size = strlen(pass);
+  msg->buffer_size = strlen(pass)+1;
   msg->buffer = malloc(msg->buffer_size);
   strncpy(msg->buffer, pass, msg->buffer_size);
 
@@ -68,7 +68,7 @@ req_set_config(unsigned char config, unsigned char * value)
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = SET_CONFIG;
   msg->param = config;
-  msg->buffer_size = strlen(value);
+  msg->buffer_size = strlen(value)+1;
   msg->buffer = malloc(msg->buffer_size);
   strncpy(msg->buffer, value, msg->buffer_size);
 

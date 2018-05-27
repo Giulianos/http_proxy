@@ -105,19 +105,20 @@ stdin_read_handler(struct selector_key * key)
 
       case CRED:
         j = 0;
-        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
         send_credentials(param1);
         state = START;
+        return;
       case GMETRIC:
         j = 0;
-        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        req_get_metric(param1);
+        req_get_metric(atoi(param1));
         state = START;
         return;
       case GCONFIG:
@@ -126,7 +127,7 @@ stdin_read_handler(struct selector_key * key)
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        req_get_config(param1);
+        req_get_config(atoi(param1));
         state = START;
         return;
       case SCONFIG:
@@ -146,7 +147,7 @@ stdin_read_handler(struct selector_key * key)
         }
         param2[j] = '\0';
 
-        req_set_config(param1, param2);
+        req_set_config(atoi(param1), param2);
 
         state = START;
         return;
@@ -156,7 +157,7 @@ stdin_read_handler(struct selector_key * key)
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        error_handler(param1);
+        error_handler(atoi(param1));
         return;
 
         /** si no entra a los anteriores, retorno porque no es valido*/
@@ -174,12 +175,13 @@ stdout_write_handler(struct selector_key * key)
   if(is_first_time) {
     is_first_time = 0;
     write(key->fd, "Bienvenido Administrador\n"
-                  "0) Listar metricas\n"
-                  "1) Listar configuraciones\n"
-                  "2) Obtener metrica (indicar nombre de metrica)\n"
-                  "3) Obtener configuracion (indicar nombre de configuracion)\n"
-                  "4) Setear configuracion (indicar nombre de configuracion y valor deseado\n"
-                  "5) Cerrar\n", 260);
+                  "0) Enviar credenciales (password)\n"
+                  "1) Listar metricas\n"
+                  "2) Listar configuraciones\n"
+                  "3) Obtener metrica (indicar numero de metrica)\n"
+                  "4) Obtener configuracion (indicar numero de configuracion)\n"
+                  "5) Setear configuracion (indicar numero de configuracion y valor deseado\n"
+                  "6) Cerrar\n", 260);
     return;
   }
   if(pq_is_empty())
