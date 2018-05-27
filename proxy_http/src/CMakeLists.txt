@@ -1,10 +1,11 @@
 # Subdirectories
-add_subdirectory(selector )
+add_subdirectory(selector)
 add_subdirectory(logger)
+add_subdirectory(string)
 
 find_package (Threads)
 
-add_executable(proxy_http main.c argument/argument.c)
+add_executable(proxy_http main.c)
 
 set_target_properties(proxy_http PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 

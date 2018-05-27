@@ -3,12 +3,15 @@
 #define LOG_FILE "proxy.log"
 
 #include <fcntl.h>
+#include <pthread.h>
+#include <syslog.h>
 
+void log_open();
 
-int log_open();
+void log_err_write(char* msg);
 
-int log_write(char* msg);
+void log_info_write(char* msg);
 
-int log_close();
+void log_close();
 
 #endif //PROXY_HTTP_LOGGER_H

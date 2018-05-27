@@ -1,20 +1,9 @@
-
-#include <getopt.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <limits.h>
-#include <string/mystring.h>
-#include <errno.h>
-#define VERSION "0.0.0"
+#include <argument/argument.h>
 
 void printhelp();
 long parse_port(char * port_name, char *optarg);
 
-struct mediatypes{
-    int size;
-    char** types;
-
-};
+int parse_mediatypes(struct mediatypes* mt,const char* op_arg);
 
 void argument_get(int argc, char **argv) {
     int c;
@@ -26,9 +15,12 @@ void argument_get(int argc, char **argv) {
     char* transform="";
     __uint16_t listen_port=8080;
     __uint16_t mgmt_port=9000;
+    struct mediatypes mt;
+    mt.size=0;
+    mt.types=NULL;
     //end definir
 
-    while ((c = getopt (argc, argv, "e:hl:L:m:M:o:p:P:t:v")) != -1){
+    while ((c = getopt (argc, argv, "e:h:l:L:m:M:o:p:t:v")) != -1){
         switch (c) {
             case 'e': //archivo de error
                 error_file=optarg;
@@ -43,12 +35,16 @@ void argument_get(int argc, char **argv) {
                 mgmt_address = optarg;
                 break;
             case 'M': //media-types
+                parse_mediatypes(&mt,optarg);
             case 'o': //puerto de management
-                mgmt_port = (__uint16_t) atol(optarg);
+                mgmt_port = (__uint16_t) parse_port("management port",optarg);
+                break;
             case 'p': //puerto del proxy http
-                listen_port = (__uint16_t) atol(optarg);
+                listen_port = (__uint16_t) parse_port("proxy port",optarg);
+                break;
             case 't': //programa de transformacion
                 transform=optarg;
+                break;
             case 'v': //imprime version
                 printf("%s\n",VERSION);
                 exit(0);
@@ -77,7 +73,7 @@ long parse_port(char * port_name, char *optarg) {
     if (end == optarg|| '\0' != *end
         || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
         || sl < 0 || sl > USHRT_MAX) {
-        fprintf(stderr, "%s port should be an integer: %s\n", port_name, optarg);
+        fprintf(stderr, "%s port should be an integer: %s\n", port_name, optarg); //TODO: espaniol?
         exit(1);
     }
 
@@ -88,25 +84,40 @@ int parse_mediatypes(struct mediatypes* mt,const char* op_arg){
     int i=0;
     Strin *s=newStrin();
     if(s==NULL)
-        return -1;
+        return MEMERR;
+    if(mt->size==0){
+        mt->types=malloc(sizeof(struct mediatypes));
+        if(mt->types==NULL)
+            return MEMERR;
+    }
     while(op_arg[i]!=0){
         char c=op_arg[i];
         if(c==','){
             void *tmp = realloc(mt->types, (mt->size+1)*sizeof(char*));
-            if (tmp == NULL)
-                return -1;
+            if (tmp == NULL){
+                free(mt->types);
+                return MEMERR;
+            }
             mt->types[mt->size]=retChar(s);
+            mt->size++;
             free(s);
-            mt->size+=1;
+            s=newStrin();
+            if(s==NULL)
+                return -1;
         }else{
             if(OK!=addcToStrin(s,c))
-                return -1;
+                return MEMERR;
         }
         i++;
     }
     if(s->slen>0){
         mt->types[mt->size]=retChar(s);
+        mt->size++;
         free(s);
     }
+    if(mt->size==0){
+        free(mt->types);
+    }
+    return ARG_OK;
 
 }
