@@ -10,6 +10,8 @@
 
 #include <selector/selector.h>
 
+#include <logger/logger.h>
+
 void
 listen_read_handler(struct selector_key *key);
 void
@@ -108,6 +110,7 @@ main(const int argc, const char * argv[])
             return 1;
         }
     }
+    printf(err_msg);
 
 }
 
@@ -126,8 +129,8 @@ listen_read_handler(struct selector_key *key)
         return;
     }
 
-    printf("Client accepted, closing connection...\n");
 
+    printf("Client accepted, closing connection...\n");
     close(client);
 
 }
