@@ -1,10 +1,11 @@
-#include "myParserUtils/myParserUtils.h"
+#include "myParserUtils.h"
 #include <assert.h>
 #include <stdlib.h>
 
 static void assertReadAndWrite (buffer *b, buffer *bOut);
 static void assertSpaces (buffer *b, buffer *bOut);
 static void assertWriteToBuffer (buffer *bOut);
+static void assertWriteToBufferReverse (buffer *b);
 static void assertWriteToTransfBuf (buffer *b, buffer *bOut);
 static void assertFormatNormal (buffer *b, buffer *bOut);
 static void assertFormatMissing (buffer *b, buffer *bOut);
@@ -33,6 +34,9 @@ int main (int argc, char *argv[]) {
 	assertWriteToBuffer(&bOut);
 
 	reset(&b, &bOut);
+	assertWriteToBufferReverse (&b);
+
+	reset(&b, &bOut);
 	assertWriteToTransfBuf(&b, &bOut);
 
 	reset(&b, &bOut);
@@ -56,7 +60,7 @@ int main (int argc, char *argv[]) {
 static void assertReadAndWrite (buffer *b, buffer *bOut) {
 	assert(readAndWrite(b, bOut) == 0);
 
-	buffer_write_reserved(b, 'H');
+	buffer_write_reverse(b, 'H');
 	buffer_write(b, 'O');
 	buffer_write(b, 'L');
 
@@ -99,6 +103,15 @@ static void assertWriteToBuffer (buffer *bOut) {
 	assert(buffer_read(bOut) == 'l');
 	assert(buffer_read(bOut) == 'a');
 	assert(buffer_read(bOut) == 0);
+}
+
+static void assertWriteToBufferReverse (buffer *b) {
+	writeToBufReverse("Hola", b, 4);
+	assert(buffer_read(b) == 'H');
+	assert(buffer_read(b) == 'o');
+	assert(buffer_read(b) == 'l');
+	assert(buffer_read(b) == 'a');
+	assert(buffer_read(b) == 0);
 }
 
 static void assertWriteToTransfBuf (buffer *b, buffer *bOut) {
@@ -162,14 +175,23 @@ static void assertNumber (buffer *b, buffer *bOut) {
 	int number;
 
 	buffer_write(b, 'g');
-	assert(!getNumber(&number, b, bOut));
+	assert(!getNumber(&number, b, bOut, ""));
 	assert(buffer_read(b) == 'g');
 	buffer_write(b, '5');
 	buffer_write(b, '4');
 	buffer_write(b, 'a');
-	assert(getNumber(&number, b, bOut));
+	assert(getNumber(&number, b, bOut, ""));
 	assert(number == 54);
 	assert(buffer_read(b) == 'a');
+
+	buffer_write(b, '5');
+	buffer_write(b, '1');
+	// Retorno false porque no sé si terminé de leer número.
+	assert(!getNumber(&number, b, bOut, "1"));
+	buffer_write(b, 'a');
+	assert(getNumber(&number, b, bOut, ""));
+	// Leo 51 con el 1 por el prefix anterior.
+	assert(number == 151);
 }
 
 static void assertHexNumber (buffer *b, buffer *bOut) {

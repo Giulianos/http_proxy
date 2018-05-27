@@ -95,19 +95,25 @@ buffer_peek(buffer *b) {
 
 // Función propia
 inline bool
-buffer_can_write_reserved(buffer *b) {
+buffer_can_write_reverse(buffer *b) {
     return b->read - b->data > 0;
 }
 
 // Función propia
 inline bool
-is_reserved(buffer *b) {
+is_reverse(buffer *b) {
     return b->read - b->infLimit < 0;
 }
 
 // Función propia
+inline bool
+start_state(buffer *b) {
+    return b->read - b->infLimit <= 0;
+}
+
+// Función propia
 inline void
-buffer_write_adv_reserved(buffer *b, const ssize_t bytes) {
+buffer_write_adv_reverse(buffer *b, const ssize_t bytes) {
     if(bytes > -1) {
         b->read -= (size_t) bytes;
         assert(b->data <= b->read);
@@ -116,9 +122,9 @@ buffer_write_adv_reserved(buffer *b, const ssize_t bytes) {
 
 // Función propia
 inline void
-buffer_write_reserved(buffer *b, uint8_t c) {
-    if(buffer_can_write_reserved(b)) {
-        buffer_write_adv_reserved(b, 1);
+buffer_write_reverse(buffer *b, uint8_t c) {
+    if(buffer_can_write_reverse(b)) {
+        buffer_write_adv_reverse(b, 1);
         *b->read = c;
     }
 }

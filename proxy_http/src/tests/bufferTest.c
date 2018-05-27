@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-#include "buffer/buffer.h"
+#include "buffer.h"
 
 static void assertReservedRead (buffer *b);
 static void assertCompactLimit (buffer *b);
@@ -45,7 +45,7 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	buffer_write_reserved(b, 'O');
+	buffer_write_reverse(b, 'O');
 	//        R=1     W=3
 	//        ↓       ↓
 	//    +---+---+---+---+---+---+
@@ -61,7 +61,7 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	buffer_write_reserved(b, 'H');
+	buffer_write_reverse(b, 'H');
 	//    R=0             W=4
 	//    ↓               ↓
 	//    +---+---+---+---+---+---+
@@ -69,9 +69,9 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	buffer_write_reserved(b, 'N');
+	buffer_write_reverse(b, 'N');
 	// No escribo nada.
-	assert(is_reserved(b));
+	assert(is_reverse(b));
 	assert(buffer_read(b) == 'H');
 	//        R=1         W=4
 	//        ↓           ↓
@@ -80,7 +80,7 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	assert(is_reserved(b));
+	assert(is_reverse(b));
 	assert(buffer_read(b) == 'O');
 	//            R=2     W=4
 	//            ↓       ↓
@@ -89,7 +89,7 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	assert(!is_reserved(b));
+	assert(!is_reverse(b));
 	assert(buffer_read(b) == 'L');
 	//                R=3 W=4
 	//                ↓   ↓
@@ -98,7 +98,7 @@ static void assertReservedRead (buffer *b) {
 	//    +---+---+---+---+---+---+
 	//            ↑               ↑
 	//            infLimit=2      limit=6
-	assert(!is_reserved(b));
+	assert(!is_reverse(b));
 	assert(buffer_read(b) == 'A');
 	//
 	//            R=2/W=2

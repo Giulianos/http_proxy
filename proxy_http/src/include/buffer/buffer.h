@@ -146,27 +146,35 @@ buffer_peek(buffer *b);
  * y en sentido inverso.
  */
 bool
-buffer_can_write_reserved(buffer *b);
+buffer_can_write_reverse(buffer *b);
 
 /**
  * Veo si el puntero de read está en zona reservada - función propia.
  */
 bool
-is_reserved(buffer *b);
+is_reverse(buffer *b);
 
 /**
- * función propia - como buffer_write_adv pero en zona reservada
- * y en sentido inverso.
+ * Cuando empiezo a leer o termino de leer todo, el buffer se compacta
+ * y el puntero de read pasa a la posición infLimit.
+ * Luego, si escribo de forma reversa, puedo incluso empezar
+ * en posición reservada- función propia.
+ */
+bool
+start_state(buffer *b);
+/**
+ * función propia - como buffer_write_adv pero en zona inverso
+ * y puede entrar en zona reservada.
  */
 void
-buffer_write_adv_reserved(buffer *b, const ssize_t bytes);
+buffer_write_adv_reverse(buffer *b, const ssize_t bytes);
 
 /**
- * función propia - como buffer_write pero en zona reservada
- * y en sentido inverso.
+ * función propia - como buffer_write pero en zona inverso
+ * y puede entrar en zona reservada.
  */
 void
-buffer_write_reserved(buffer *b, uint8_t c);
+buffer_write_reverse(buffer *b, uint8_t c);
 
 /** escribe un byte */
 void
