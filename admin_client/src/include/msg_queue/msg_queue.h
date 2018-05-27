@@ -3,19 +3,12 @@
 
 #include <protocol/protocol.h>
 
-  typedef struct qnode * qnode_t;
-
-  struct qnode {
-    unsigned char * msg;
-    int index;
-    qnode_t next;
-  } ;
 
   /**
-   * @return the next node that needs to be sent
+   * @return the msg that needs to be sent (msg of the first node)
    * if there is no node, returns NULL
    */
-  qnode_t
+  msg_t *
   poll();
 
   /**
@@ -27,17 +20,6 @@
    */
   int
   offer(msg_t * msg);
-
-  /**
-   * pushes the node at the beginning of the queue so that
-   * it is the next one returned. This function is used when
-   * a msg was polled but not sent completely.
-   * @param qnode still needs to be sent
-   * @return 0 if ok, -1 if not
-   */
-  int
-  push(qnode_t qnode);
-
 
   /**
    * @return 1 if msq_q is empty, 0  if not

@@ -1,18 +1,20 @@
 #ifndef PRINTQUEUE_H
 #define PRINTQUEUE_H
 
+#include <protocol/protocol.h>
+
 typedef struct pqnode * pqnode_t;
 
 struct pqnode{
-  unsigned char * str;
+  msg_t * msg;
   pqnode_t next;
 };
 
-unsigned char *
+msg_t *
 pq_poll();
 
 void
-pq_offer(unsigned char * str);
+pq_offer(msg_t * msg);
 
 int
 pq_is_empty();

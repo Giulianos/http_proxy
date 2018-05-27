@@ -5,14 +5,19 @@
 #include <messages/messages.h>
 
 void
+send_credentials(unsigned char * pass);
+void
 req_list_metrics();
 void
 req_list_configs();
 void
-req_get_metric(char * metric);
+req_get_metric(unsigned char metric);
 void
-req_get_config(char * config);
+req_get_config(unsigned char config);
 void
-req_set_config(char * config, char * value);
+req_set_config(unsigned char config, unsigned char * value);
+void
+error_handler(unsigned char error_type);
+
   
 #endif

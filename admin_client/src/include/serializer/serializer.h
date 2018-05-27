@@ -33,9 +33,9 @@ serialize_msg(unsigned char * buffer, msg_t * msg);
 unsigned char *
 deserialize_int(unsigned char * buffer, int * value);
 unsigned char *
-deserialize_char(unsigned char * buffer, char * value);
+deserialize_char(unsigned char * buffer, unsigned char * value);
 unsigned char *
-deserialize_string(unsigned char * buffer, char * str);
+deserialize_string(unsigned char * buffer, unsigned char * str);
 unsigned char *
 deserialize_msg(unsigned char * buffer, msg_t * msg);
 

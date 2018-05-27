@@ -7,6 +7,9 @@ add_subdirectory(serializer)
 add_subdirectory(messages)
 add_subdirectory(selector)
 
+# Modules
+include(FindSCTP.cmake)
+
 find_package (Threads)
 
 add_executable(admin_client main.c)
@@ -14,6 +17,7 @@ add_executable(admin_client main.c)
 set_target_properties(admin_client PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 
 # Libraries
+target_link_libraries(admin_client ${SCTP_LIBRARY})
 target_link_libraries(admin_client Handlers)
 target_link_libraries(admin_client PrintQueue)
 target_link_libraries(admin_client Actions)

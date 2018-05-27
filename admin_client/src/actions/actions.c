@@ -6,11 +6,25 @@
 #include <string.h>
 
 void
+send_credentials(unsigned char * pass)
+{
+  msg_t * msg = malloc(sizeof(msg_t));
+  msg->type = SEND_CRED;
+  msg->param = 0;
+  msg->buffer_size = strlen(pass);
+  msg->buffer = malloc(msg->buffer_size);
+  strncpy(msg->buffer, pass, msg->buffer_size);
+
+  offer(msg);
+}
+
+void
 req_list_metrics()
 {
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = LIST_METRICS;
-  msg->bytes = sizeof(unsigned char *) * 2;
+  msg->param = 0;
+  msg->buffer_size = 0;
 
   offer(msg);
 }
@@ -20,45 +34,49 @@ req_list_configs()
 {
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = LIST_CONFIGS;
-  msg->bytes = sizeof(unsigned char *) * 2;
+  msg->param = 0;
+  msg->buffer_size = 0;
 
   offer(msg);
 }
 
 void
-req_get_metric(char * metric)
+req_get_metric(unsigned char metric)
 {
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = GET_METRIC;
-  msg->param = malloc(strlen(metric));
-  strcpy(msg->param, metric);
-  msg->bytes = sizeof(unsigned char *) * 3;
+  msg->param = metric;
+  msg->buffer_size = 0;
 
   offer(msg);
 }
 
 void
-req_get_config(char * config)
+req_get_config(unsigned char config)
 {
   msg_t * msg = malloc(sizeof(msg_t));
-  msg->type = GET_METRIC;
-  msg->param = malloc(strlen(config));
-  strcpy(msg->param, config);
-  msg->bytes = sizeof(unsigned char *) * 3;
+  msg->type = GET_CONFIG;
+  msg->param = config;
+  msg->buffer_size = 0;
 
   offer(msg);
 }
 
 void
-req_set_config(char * config, char * value)
+req_set_config(unsigned char config, unsigned char * value)
 {
   msg_t * msg = malloc(sizeof(msg_t));
-  msg->type = GET_METRIC;
-  msg->param = malloc(strlen(config));
-  strcpy(msg->param, config);
+  msg->type = SET_CONFIG;
+  msg->param = config;
   msg->buffer_size = strlen(value);
-  strcpy(msg->buffer_size, value);
-  msg->bytes = sizeof(unsigned char *) * (3 + msg->buffer_size) + sizeof(int);
+  msg->buffer = malloc(msg->buffer_size);
+  strncpy(msg->buffer, value, msg->buffer_size);
 
   offer(msg);
+}
+
+void
+error_handler(unsigned char error_type)
+{
+
 }

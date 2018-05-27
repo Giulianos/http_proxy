@@ -35,15 +35,14 @@ serialize_string(unsigned char * buffer, char * str)
 unsigned char *
 serialize_msg(unsigned char * buffer, msg_t * msg)
 {
-  buffer = serialize_int(buffer, msg->bytes);
+  /** type serialization */
   buffer = serialize_char(buffer, msg->type);
-  if(msg->type == GET_METRIC ||
-         msg->type == GET_CONFIG ||
-            msg->type == SET_CONFIG) {
-    buffer = serialize_string(buffer, msg->param);
-  }
+  /** param serialization */
+  buffer = serialize_char(buffer, msg->param);
+  /** buffer size serialization */
+  buffer = serialize_int(buffer, msg->buffer_size);
+  /** buffer serialization if present */
   if(msg->buffer_size > 0) {
-    buffer = serialize_int(buffer, msg->buffer_size);
     buffer = serialize_string(buffer, msg->buffer);
   }
 
@@ -59,14 +58,14 @@ deserialize_int(unsigned char * buffer, int * value)
 }
 
 unsigned char *
-deserialize_char(unsigned char * buffer, char * value)
+deserialize_char(unsigned char * buffer, unsigned char * value)
 {
   *value = buffer[0];
   return buffer + 1;
 }
 
 unsigned char *
-deserialize_string(unsigned char * buffer, char * str)
+deserialize_string(unsigned char * buffer, unsigned char * str)
 {
   do {
     buffer = deserialize_char(buffer, str);
@@ -82,16 +81,18 @@ unsigned char *
 deserialize_msg(unsigned char * buffer, msg_t * msg)
 {
   unsigned char * start = buffer;
-  buffer = deserialize_int(buffer, msg->bytes);
-  buffer = deserialize_char(buffer, msg->type);
-  if(msg->type == GET_METRIC ||
-         msg->type == GET_CONFIG ||
-            msg->type == SET_CONFIG) {
-    buffer = deserialize_string(buffer, msg->param);
-  }
-  if(msg->bytes - (buffer-start) > 0) {
-    buffer = deserialize_int(buffer, msg->buffer_size);
-    msg->buffer = malloc(msg->buffer_size);
+
+  /** deserialization of type */
+  buffer = deserialize_char(buffer, &msg->type);
+  /** param deserialization */
+  buffer = deserialize_char(buffer, &msg->param);
+  /** buffer size deserialization */
+  buffer = deserialize_int(buffer, &msg->buffer_size);
+
+  if(msg->buffer_size > 0) {
+    msg->buffer = malloc((size_t)msg->buffer_size);
+    if(msg->buffer == NULL)
+      return NULL;
     buffer = deserialize_string(buffer, msg->buffer);
   }
 

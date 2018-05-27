@@ -56,3 +56,11 @@ El único campos que siempre estará inicializados será *type*. A éste se les 
 - **LIST_METRCIS y LIST_CONFIGS**: Si se está del lado del proxy: *buffer_size* y *buffer*.
 - **GET_METRIC y GET_CONFIG**: *param* y si se está del lado del proxy: *buffer_size* y *buffer*.
 - **SET_CONFIG**: Si se está del lado del administrador: *param*, *buffer_size* y *buffer*.
+
+
+## DANI COMENTS
+Cambiar messages.h: que se envien msgs serializados.
+msgs_t lo tengo que usar en el offer nada mas: lo serializo en el offer y dps lo meto en la msg_queue.
+El send msg tiene que simplemente mandar los bytes que pueda y retornar la cantidad que mando.
+Desde el lado del msg_queue tengo que ver si todavia no se mando todo, lo PUSHEO a la cola para que luego se mande lo que falta de ese mensaje primero.
+La parte de recieve si la maneja con msg_t

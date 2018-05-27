@@ -9,10 +9,10 @@
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <netinet/sctp.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
-
 
 int
 main(const int argc, const char * argv[])
@@ -21,28 +21,22 @@ main(const int argc, const char * argv[])
   selector_status  ss       = SELECTOR_SUCCESS;
   fd_selector      selector = NULL;
 
+
+  int admin_socket;
   struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sctp_event_subscribe events;
+  struct sctp_sndrcvinfo sri;
+
+  admin_socket = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+  bzero(&addr, sizeof(addr));
   addr.sin_family      = AF_INET;
-  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
   addr.sin_port        = htons(ADMIN_PORT);
+  inet_pton(AF_INET,"127.0.0.1", &addr.sin_addr);
 
-  if((admin_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    err_msg = "unable to create admin socket";
-    /** exit with error */
-    printf("%s, error=%d\n", err_msg, errno);
-  return 1;
-  }
-
-  if(connect(admin_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-    err_msg="error al conectar";
-    close(admin_socket);
-    /** exit with error */
-    printf("%s, error=%s\n", err_msg, strerror(errno));
-    return 1;
-  }
-
-    setsockopt(admin_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+  bzero(&events, sizeof(events));
+  events.sctp_data_io_event = 1;
+  setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events));
 
   /** Sets non-blocking io on server */
 
@@ -53,14 +47,14 @@ main(const int argc, const char * argv[])
     return 1;
   }
 
-  if(selector_fd_set_nio(STDIN) == -1) {
+  if(selector_fd_set_nio(STDIN_FILENO) == -1) {
     err_msg = "getting server socket flags";
     /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
 
-  if(selector_fd_set_nio(STDOUT) == -1) {
+  if(selector_fd_set_nio(STDOUT_FILENO) == -1) {
     err_msg = "getting server socket flags";
     /** exit with error */
     return 1;
@@ -108,7 +102,15 @@ main(const int argc, const char * argv[])
       .handle_block      = NULL,
   };
 
-  ss = selector_register(selector, admin_socket, &admin_handler, OP_READ || OP_WRITE, NULL);
+  bzero(&sri, sizeof(sri));
+  sri.sinfo_stream = 0;
+  struct addr_data admin_data = {
+      .addr       = &addr,
+      .len        = sizeof(addr),
+      .sri        = sri,
+  };
+
+  ss = selector_register(selector, admin_socket, &admin_handler, OP_READ | OP_WRITE, &admin_data);
 
   if(ss != SELECTOR_SUCCESS) {
     err_msg = "registering admin_socket";
@@ -116,14 +118,14 @@ main(const int argc, const char * argv[])
     return 1;
   }
 
-  ss = selector_register(selector, STDIN, &stdin_handler, OP_READ, NULL);
+  ss = selector_register(selector, STDIN_FILENO, &stdin_handler, OP_READ, NULL);
 
   if(ss != SELECTOR_SUCCESS) {
     err_msg = "registering stdin";
     /** exit with error */
     return 1;
   }
-  ss = selector_register(selector, STDOUT, &stdout_handler, OP_WRITE, NULL);
+  ss = selector_register(selector, STDOUT_FILENO, &stdout_handler, OP_WRITE, NULL);
 
   if(ss != SELECTOR_SUCCESS) {
     err_msg = "registering stdoutt";

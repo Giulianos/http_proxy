@@ -6,48 +6,36 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <protocol/protocol.h>
 
 static int is_first_time = 1;
 void
-admin_read_handler()
+admin_read_handler(struct selector_key * key)
 {
   int i = 0;
-  msg_t * msg = malloc(MAX_READ);
+  addr_data_t servdata = (addr_data_t) key->data;
+  msg_t * msg = malloc(sizeof(msg_t));
 
-  rcv_msg(admin_socket, msg);
+  rcv_msg(servdata, key->fd, msg);
 
-  if(msg->type == SET_CONFIG) {
-    pq_offer(msg->param);
-    return;
-  }
-  if(msg->type == GET_METRIC ||
-     msg->type == GET_CONFIG){
-    pq_offer(msg->param);
-  }
-  pq_offer(msg->buffer);
+  pq_offer(msg);
 }
 
 void
-admin_write_handler() {
-  int written_bytes;
-  int i = 0;
+admin_write_handler(struct selector_key * key) {
+  msg_t * msg;
+  addr_data_t servdata = (addr_data_t) key->data;
 
   if (q_is_empty())
     return;
 
-  qnode_t qnode = malloc(sizeof(qnode_t));
-  qnode = poll();
+  msg = poll();
 
-  written_bytes = send_msg(admin_socket, qnode->msg);
-
-  /**missing if the message was not sent completely*/
-//  if(written_bytes < qnode->msg->bytes) {
-//    qnode->msg->bytes -= written_bytes;
-//    /** consume bytes already written before pushing the msg */
-//    }
+  send_msg(servdata, key->fd, msg);
 }
+/** MISSING ERROR MANAGEMENT AND SEND CREDENTIALS */
 void
-stdin_read_handler()
+stdin_read_handler(struct selector_key * key)
 {
   int i = 0;
   int j = 0;
@@ -57,25 +45,33 @@ stdin_read_handler()
   static char param1[MAX_READ];
   static char param2[MAX_READ];
 
-  enum state{START, GMETRIC, GCONFIG, SCONFIG};
+  enum state{START, CRED, GMETRIC, GCONFIG, SCONFIG, PROTERROR};
 
   static state = START;
-  bytes = read(STDIN, buffer, MAX_READ);
+  bytes = read(key->fd, buffer, MAX_READ);
 
   while(i < bytes) {
     switch(state) {
       case START:
         if(buffer[i] == '0') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          state = CRED;
+          break;
+        }
+        if(buffer[i] == '1') {
           req_list_metrics();
           state = START;
           return;
         }
-        if(buffer[i] == '1') {
+        if(buffer[i] == '2') {
           req_list_configs();
           state = START;
           return;
         }
-        if(buffer[i] == '2') {
+        if(buffer[i] == '3') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -83,7 +79,7 @@ stdin_read_handler()
           state = GMETRIC;
           break;
         }
-        if(buffer[i] == '3') {
+        if(buffer[i] == '4') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -91,7 +87,7 @@ stdin_read_handler()
           state = GCONFIG;
           break;
         }
-        if(buffer[i] == '4') {
+        if(buffer[i] == '5') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -99,6 +95,22 @@ stdin_read_handler()
           state = SCONFIG;
           break;
         }
+        if(buffer[i] == '6') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          break;
+        }
+
+      case CRED:
+        j = 0;
+        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j] = '\0';
+        send_credentials(param1);
+        state = START;
       case GMETRIC:
         j = 0;
         for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
@@ -138,6 +150,14 @@ stdin_read_handler()
 
         state = START;
         return;
+      case PROTERROR:
+        j = 0;
+        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j] = '\0';
+        error_handler(param1);
+        return;
 
         /** si no entra a los anteriores, retorno porque no es valido*/
       default:
@@ -147,13 +167,13 @@ stdin_read_handler()
   }
 }
 void
-stdout_write_handler()
+stdout_write_handler(struct selector_key * key)
 {
-  unsigned char * str;
+  msg_t * msg;
 
   if(is_first_time) {
     is_first_time = 0;
-    write(STDOUT, "Bienvenido Administrador\n"
+    write(key->fd, "Bienvenido Administrador\n"
                   "0) Listar metricas\n"
                   "1) Listar configuraciones\n"
                   "2) Obtener metrica (indicar nombre de metrica)\n"
@@ -165,8 +185,12 @@ stdout_write_handler()
   if(pq_is_empty())
     return;
   while(!pq_is_empty()) {
-    str = pq_poll();
-    write(STDOUT, str, strlen(str));
-    free(str);
+    msg = pq_poll();
+    print_msg(msg);
+
+    if(msg->buffer_size > 0) {
+      free(msg->buffer);
+    }
+    free(msg);
   }
 }

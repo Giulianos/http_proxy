@@ -1,36 +1,41 @@
 #include <print_queue/print_queue.h>
 #include <stdlib.h>
 #include <string.h>
+#include <protocol/protocol.h>
 
 static pqnode_t first = NULL;
 static pqnode_t last = NULL;
 
-unsigned char *
+msg_t *
 pq_poll()
 {
+  pqnode_t aux;
+
   if(pq_is_empty()) {
     return NULL;
   }
-  unsigned char * ret = first->str;
+  msg_t * msg = first->msg;
+  aux = first;
 
   if(first == last)
     last = NULL;
   first = first->next;
 
-  return ret;
+  free(aux);
+
+  return msg;
 }
 
-
 void
-pq_offer(unsigned char * str)
+pq_offer(msg_t * msg)
 {
   pqnode_t pqnode = malloc(sizeof(pqnode_t));
-  pqnode->str = malloc(strlen(str));
-  strcpy(pqnode->str, str);
+  pqnode->msg = msg;
   pqnode->next = NULL;
   if(pq_is_empty()) {
     first = pqnode;
     last = pqnode;
+    return;
   }
   last->next = pqnode;
   last = pqnode;
