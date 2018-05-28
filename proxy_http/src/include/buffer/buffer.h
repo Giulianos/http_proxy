@@ -152,16 +152,8 @@ buffer_can_write_reverse(buffer *b);
  * Veo si el puntero de read está en zona reservada - función propia.
  */
 bool
-is_reverse(buffer *b);
+is_reserved(buffer *b);
 
-/**
- * Cuando empiezo a leer o termino de leer todo, el buffer se compacta
- * y el puntero de read pasa a la posición infLimit.
- * Luego, si escribo de forma reversa, puedo incluso empezar
- * en posición reservada- función propia.
- */
-bool
-start_state(buffer *b);
 /**
  * función propia - como buffer_write_adv pero en zona inverso
  * y puede entrar en zona reservada.

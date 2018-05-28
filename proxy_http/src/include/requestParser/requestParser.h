@@ -8,8 +8,6 @@
 #include <errno.h>
 #include <myParserUtils/myParserUtils.h>
 
-#define BUFFER_RESTARTED(b) start_state(b)
-
 // El buffer auxiliar es usado si me llega un read del buffer = 0
 // y necesito guardar lo que estaba comparando para cuando read != de 0.
 #define AUX_BUFFER_SIZE 255
@@ -25,6 +23,7 @@
 #define DEFAULT_PORT 80
 
 typedef enum {
+	SPACE_TRANSITION,
 	METHOD,
 	URI,
 	RELATIVE_URI,
@@ -56,6 +55,7 @@ typedef enum {
 
 typedef struct RequestData {
 	requestParserState parserState;
+	requestParserState next; // Usado para transición de espacios.
 	bool isBufferEmpty;
 	requestState state;
 	httpVersion version;

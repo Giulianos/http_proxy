@@ -1,6 +1,7 @@
 #include <requestParser/requestParser.h>
 
 static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool checkSpaces (RequestData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Start Line
 static bool extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut);
 static bool checkUri (RequestData *rData, buffer *bIn, buffer *bOut);
@@ -63,11 +64,19 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 
 	while (success && active) {
 		switch (rData->parserState) {
+			case SPACE_TRANSITION:
+				if (!checkSpaces(rData, bIn, bOut)) {
+					success = false;
+				} else {
+					rData->parserState = rData->next;
+				}
+				break;
 			case METHOD:
 				if (!extractHttpMethod(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = URI;
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = URI;
 				}
 				break;
 			case URI:
@@ -79,7 +88,8 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				} else if (aux) { // Ya encontré el host.
 					rData->parserState = FINISHED;
 				} else {
-					rData->parserState = VERSION;
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = VERSION;
 				}
 				break;
 			case URI_HOST:
@@ -89,14 +99,16 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				} else if (aux) { // Ya encontré el host.
 					rData->parserState = FINISHED;
 				} else {
-					rData->parserState = VERSION;
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = VERSION;
 				}
 				break;
 			case RELATIVE_URI:
 				if (!cleanRelativeUri(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = VERSION;
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = VERSION;
 				}
 				break;
 			case VERSION:
@@ -124,8 +136,9 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case HEADERS:
-				if (checkHostHeader(rData, bIn, bOut)) { // Ya encontré el host.
-					rData->parserState = FINISHED;
+				if (checkHostHeader(rData, bIn, bOut)) { // Ya encontré el host header.
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = HOST;
 				} else {
 					success = false;
 				}
@@ -148,6 +161,8 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 		// Si rData->isBufferEmpty == true rompí porque no había para leer en el buffer.
 		// Sino es porque hubo un error el request.
 		switch (rData->parserState) {
+			case SPACE_TRANSITION:
+				break;
 			case METHOD:
 				rData->state = (rData->method == UNDEFINED_M ? 
 						GENERAL_METHOD_ERROR : UNSUPPORTED_METHOD_ERROR);
@@ -182,6 +197,15 @@ static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 	return success;
 }
 
+static bool checkSpaces (RequestData *rData, buffer *bIn, buffer *bOut) {
+	if (moveThroughSpaces(bIn) == 0) {
+		rData->isBufferEmpty = true;
+		return false;
+	}
+	buffer_write(bOut, ' ');
+	return true;
+}
+
 /**               COMIENZO FUNCIONES DE START LINE              **/
 
 static bool extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
@@ -198,11 +222,10 @@ static bool extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 
 	for (int i = 0; i < length; i++) {
 		if (methodOption[i][0] == c) {
-			if (matchFormat(&(methodOption[i][1]), bIn, bOut, methodPrefix)) {
+			if (matchFormat(&(methodOption[i][1]), bIn, bOut, methodPrefix, &(rData->isBufferEmpty))) {
 				rData->method = methodType[i];
 				break;
-			} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-				rData->isBufferEmpty = true;
+			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		}
@@ -212,27 +235,26 @@ static bool extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 }
 
 static bool checkUri (RequestData *rData, buffer *bIn, buffer *bOut) {
-	moveThroughSpaces(bIn, bOut);
-
-	if (matchFormat("HTTP", bIn, bOut, "")) {
+	if (matchFormat("HTTP", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		if (PEEK_UP_CHAR(bIn) == 'S') {
 			readAndWrite(bIn, bOut);
 		}
-		if (matchFormat("://", bIn, bOut, "HTTP")) {
+		if (matchFormat("://", bIn, bOut, "HTTP", &(rData->isBufferEmpty))) {
+			rData->parserState = URI_HOST;
+
 			if (checkUriForHost(rData, bIn, bOut)) {
 				return true;
-			} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-				rData->isBufferEmpty = true;
+			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				return false;
 			}
-		} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-			rData->isBufferEmpty = true;
+		} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 			return false;
 		}
-	} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-		rData->isBufferEmpty = true;
+	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 		return false;
 	}
+
+	rData->parserState = RELATIVE_URI;
 
 	cleanRelativeUri(rData, bIn, bOut);
 
@@ -242,10 +264,6 @@ static bool checkUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 static bool cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c;
 
-	moveThroughSpaces(bIn, bOut);
-
-	rData->parserState = RELATIVE_URI;
-
 	// El relative uri no es de interés para el parser por lo que solo busco pasarlo de largo.
 	while ((c = readAndWrite(bIn, bOut)) != 0 && c != ' ' && c != '\t');
 
@@ -253,7 +271,6 @@ static bool cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 		rData->isBufferEmpty = true;
 		return false;
 	}
-
 	return true;
 }
 
@@ -261,10 +278,6 @@ static bool checkUriForHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	int i = 0;
 	char c;
 	bool validHost = true;
-
-	moveThroughSpaces(bIn, bOut);
-
-	rData->parserState = URI_HOST;
 
 	// Si llego a este punto es porque tengu un uri absoluto que empieza con http:// o https://.
 
@@ -283,12 +296,12 @@ static bool checkUriForHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	// En principio, no soporto IPv6.
 	if (c == ':')  {
 		readAndWrite(bIn, bOut);
-		validHost = getNumber(&(rData->port), bIn, bOut, ":");
+		validHost = getNumber(&(rData->port), bIn, bOut, ":", &(rData->isBufferEmpty));
 	}
 
-	if (c == 0 || (!validHost && BUFFER_RESTARTED(bIn)))  {
+	if (c == 0 || (!validHost && rData->isBufferEmpty))  {
 		writeToBufReverse(rData->host, bIn, i);
-		rData->isBufferEmpty = true;
+		rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
 		return false;
 	}
 
@@ -296,27 +309,26 @@ static bool checkUriForHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 }
 
 static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
-	char *versionOption[] = {"1.0", "1.1"};
+	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
 	int length = sizeof(versionType) / sizeof(versionType[0]);
 	char *format = "HTTP/1.";
-	bool validFormat = true;
 	char c;
 
-	moveThroughSpaces(bIn, bOut);
-
-	if ((validFormat = matchFormat(format, bIn, bOut, "")) && (c = READ_UP_CHAR(bIn, bOut)) != 0) {
-		for (int i = 0; i < length; i++) {
-			if (versionOption[i][2] == c) {
-				rData->version = versionType[i];
-				break;
+	if (matchFormat(format, bIn, bOut, "", &(rData->isBufferEmpty))) {
+		if ((c = readAndWrite(bIn, bOut)) != 0) {
+			for (int i = 0; i < length; i++) {
+				if (versionOption[i] == c) {
+					rData->version = versionType[i];
+					break;
+				}
 			}
-		}
-	} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-		if (validFormat) {
+		} else {
+			rData->isBufferEmpty = true;
 			writeToBufReverse(format, bIn, strlen(format));
+			return false;
 		}
-		rData->isBufferEmpty = true;
+	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 		return false;
 	}
 
@@ -324,9 +336,7 @@ static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 }
 
 static bool checkStartLineEnd (RequestData *rData, buffer *bIn, buffer *bOut) {
-	moveThroughSpaces(bIn, bOut);
-
-	return checkCRLF(bIn, bOut, "");
+	return checkCRLF(bIn, bOut, "", &(rData->isBufferEmpty));
 }
 
 /**               FIN DE FUNCIONES DE START LINE                **/
@@ -344,10 +354,9 @@ static bool checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	// puesto dicho header artificial en una llamada anterior a checkLocalHost.
 	if (c != 'L') {
 		writeToBuf("LOOP: TRUE\r\n", bOut);
-	} else if (matchFormat("LOOP:", bIn, bOut, "")) {
+	} else if (matchFormat("LOOP:", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		rData->isLocalHost = true;
-	} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
-		rData->isBufferEmpty = true;
+	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 		return false;
 	}
 	return rData->isLocalHost;
@@ -360,31 +369,31 @@ static bool checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut) {
 
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
 		if (c == 'H') {
-			if (matchFormat("OST:", bIn, bOut, "H")) {
+			if (matchFormat("OST:", bIn, bOut, "H", &(rData->isBufferEmpty))) {
 				hostHeader = true;
 				break;
-			} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
+			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		} else if (c == '\r') {
-			if (checkLF(bIn, bOut, "\r") && checkCRLF(bIn, bOut, "\r\n")) {
+			if (checkLF(bIn, bOut, "\r", &(rData->isBufferEmpty))
+			  && checkCRLF(bIn, bOut, "\r\n", &(rData->isBufferEmpty))) { // Busco el CRLF CRLF.
 				headersEnd = true;
 				break;
-			} else if (BUFFER_RESTARTED(bIn)) { // En algún momento el buffer quedó vacío.
+			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		}
 	}
 
 	if (hostHeader) {
-		return extractHost(rData, bIn, bOut);
+		return true;
 	}
 	if (headersEnd) {
 		return false; // No encontré el header host.
 	}
-	// Si salí del while sin encontrar el host header o el final de headers, es porque
-	// llegué a un read == 0.
-	rData->isBufferEmpty = true;
+
+	rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
 	return false;
 }
 
@@ -392,10 +401,6 @@ static bool extractHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	int i = 0;
 	char c;
 	bool validHost = true;
-
-	rData->parserState = HOST;
-
-	moveThroughSpaces(bIn, bOut);
 
 	while (i < HOST_MAX_SIZE && (c = PEEK_DOWN_CHAR(bIn)) != 0) {
 		if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.') {
@@ -409,16 +414,16 @@ static bool extractHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	// En principio, no soporto IPv6.
 	if (c == ':')  {
 		readAndWrite(bIn, bOut);
-		validHost = getNumber(&(rData->port), bIn, bOut, ":");
+		validHost = getNumber(&(rData->port), bIn, bOut, ":", &(rData->isBufferEmpty));
 	}
 
-	if (c == 0 || (!validHost && BUFFER_RESTARTED(bIn)))  {
+	if (c == 0 || (!validHost && rData->isBufferEmpty))  {
 		writeToBufReverse(rData->host, bIn, i);
-		rData->isBufferEmpty = true;
+		rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
 		return false;
 	}
 
-	c = buffer_peek(bIn);
+	c = buffer_peek(bIn); // Por las validaciones anteriores ya se que voy a tener algo != 0.
 
 	return i < HOST_MAX_SIZE && validHost && (c == ' ' || c == '\t' || c == '\r');
 }

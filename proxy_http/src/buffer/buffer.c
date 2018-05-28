@@ -101,14 +101,8 @@ buffer_can_write_reverse(buffer *b) {
 
 // Función propia
 inline bool
-is_reverse(buffer *b) {
+is_reserved(buffer *b) {
     return b->read - b->infLimit < 0;
-}
-
-// Función propia
-inline bool
-start_state(buffer *b) {
-    return b->read - b->infLimit <= 0;
 }
 
 // Función propia
