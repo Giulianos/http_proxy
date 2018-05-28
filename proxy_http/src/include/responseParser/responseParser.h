@@ -13,6 +13,18 @@
 
 #define VERSION_TEXT_SIZE 3
 
+typedef enum {
+	SPACE_TRANSITION,
+	VERSION,
+	STATUS,
+	HEADERS,
+	LENGTH_CHECK,
+	ENCODING_CHECK,
+	BODY_NORMAL,
+	BODY_TRANSFORMATION,
+	FINISHED
+} responseParserState;
+
 // V_2.0 is not supported.
 typedef enum {
 	UNDEFINED, V_1_0, V_1_1
@@ -27,15 +39,19 @@ typedef enum {
 } responseState;
 
 typedef struct ResponseData {
+	responseParserState parserState;
+	responseParserState next;
+	bool isBufferEmpty;
 	responseState state;
 	httpVersion version;
 	int status;
 	int bodyLength;
 	bool isChunked;
+	bool withTransf; // Con transformación.
 } ResponseData;
 
 void defaultResponseStruct (ResponseData *rData);
-bool checkResponse (responseState *state, buffer *b, buffer *bOut);
+bool checkResponse (responseState *state, buffer *b, buffer *bOut, buffer *bTransf);
 const char * errorMessage (const responseState state);
 
 #endif
