@@ -265,7 +265,9 @@ static bool cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c;
 
 	// El relative uri no es de interés para el parser por lo que solo busco pasarlo de largo.
-	while ((c = readAndWrite(bIn, bOut)) != 0 && c != ' ' && c != '\t');
+	while ((c = buffer_peek(bIn)) != 0 && c != ' ' && c != '\t') {
+		readAndWrite(bIn, bOut);
+	};
 
 	if (c == 0)  {
 		rData->isBufferEmpty = true;
@@ -312,10 +314,9 @@ static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
 	int length = sizeof(versionType) / sizeof(versionType[0]);
-	char *format = "HTTP/1.";
 	char c;
 
-	if (matchFormat(format, bIn, bOut, "", &(rData->isBufferEmpty))) {
+	if (matchFormat("HTTP/1.", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		if ((c = readAndWrite(bIn, bOut)) != 0) {
 			for (int i = 0; i < length; i++) {
 				if (versionOption[i] == c) {
@@ -325,7 +326,7 @@ static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 			}
 		} else {
 			rData->isBufferEmpty = true;
-			writeToBufReverse(format, bIn, strlen(format));
+			writePrefix(bIn, "HTTP/1.");
 			return false;
 		}
 	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
