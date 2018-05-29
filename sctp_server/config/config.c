@@ -9,12 +9,12 @@
 
 #define PREALLOC_QUANTITY 10
 
-struct config {
+struct metric {
     char name[MAX_NAME+1];
     char * value;
 };
 
-static struct config configurations[MAX_CONFIG];
+static struct metric configurations[MAX_CONFIG];
 
 static int config_size = 0;
 

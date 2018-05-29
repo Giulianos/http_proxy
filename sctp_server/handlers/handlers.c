@@ -10,12 +10,13 @@ void
 admin_read_handler(struct selector_key * key)
 {
   int rd_sz;
-  int i = 0;
   addr_data_t admin_data = (addr_data_t) key->data;
   msg_t * msg = malloc(sizeof(msg_t));
   unsigned char buffer[MAX_READ];
 
-  rd_sz = sctp_recvmsg(key->fd, buffer, MAX_READ, admin_data->addr, &admin_data->len, &admin_data->sri, &admin_data->msg_flags);
+  rd_sz = sctp_recvmsg(key->fd, buffer, MAX_READ,
+      admin_data->addr, &admin_data->len, &admin_data->sri,
+                       &admin_data->msg_flags);
 
   if(rd_sz <= 0)
     return;
@@ -45,13 +46,21 @@ admin_read_handler(struct selector_key * key)
 
 void
 admin_write_handler(struct selector_key * key) {
+  addr_data_t admin_data = (addr_data_t) key->data;
+  unsigned char buffer[MAX_MSG_SIZE];
+  unsigned char * pointer;
   msg_t * msg;
-  addr_data_t servdata = (addr_data_t) key->data;
+  int wr_sz;
 
   if (q_is_empty())
     return;
 
   msg = q_poll();
+  pointer = serialize_msg(buffer, msg);
 
-  send_msg(servdata, key->fd, msg);
+  sctp_sendmsg(key->fd, buffer, pointer - buffer,
+     admin_data->addr, admin_data->len,
+      admin_data->sri.sinfo_ppid, admin_data->sri.sinfo_flags,
+       admin_data->sri.sinfo_stream, 0, 0);
+
 }

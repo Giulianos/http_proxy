@@ -105,24 +105,5 @@ main(int argc, char * argv[])
       /** exit with error */
       return 1;
     }
-
-//    rd_sz = sctp_recvmsg(admin_socket, readbuf, sizeof(readbuf),
-//        (struct sockaddr *)&cliaddr, &len, &sri, &msg_flags);
-//    if(rd_sz > 0) {
-//      msg_t msg;
-//      deserialize_msg(readbuf, &msg);
-//      printf("mensaje recibido: \n");
-//      printf(" type: %d \n", msg.type);
-//      printf(" param: %d \n", msg.param);
-//      printf(" buf_size: %d \n", msg.buffer_size);
-//      if(msg.buffer_size > 0)
-//        printf(" buffer: %s \n", msg.buffer);
-//      //print_msg(&msg);
-//    }
-
-//    sctp_sendmsg(admin_socket, readbuf, rd_sz,
-//                 (struct sockaddr *)&cliaddr,
-//                     len, sri.sinfo_ppid, sri.sinfo_flags,
-//                 sri.sinfo_stream, 0, 0);
   }
 }
