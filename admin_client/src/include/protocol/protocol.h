@@ -3,12 +3,14 @@
 
 #define ADMIN_PORT    9090
 #define MAX_READ      1024
-#define SEND_CRED     0
-#define LIST_METRICS  1
-#define LIST_CONFIGS  2
-#define GET_METRIC    3
-#define GET_CONFIG    4
-#define SET_CONFIG    5
+enum type{
+    SEND_CRED = 0,
+    LIST_METRICS,
+    LIST_CONFIGS,
+    GET_METRIC,
+    GET_CONFIG,
+    SET_CONFIG
+};
 
 /** error types */
 #define NO_METRIC     0

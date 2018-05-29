@@ -33,7 +33,7 @@ admin_write_handler(struct selector_key * key) {
 
   send_msg(servdata, key->fd, msg);
 }
-/** MISSING ERROR MANAGEMENT AND SEND CREDENTIALS */
+/** TODO: MISSING ERROR MANAGEMENT */
 void
 stdin_read_handler(struct selector_key * key)
 {
@@ -53,7 +53,7 @@ stdin_read_handler(struct selector_key * key)
   while(i < bytes) {
     switch(state) {
       case START:
-        if(buffer[i] == '0') {
+        if(buffer[i] == SEND_CRED+'0') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -61,17 +61,17 @@ stdin_read_handler(struct selector_key * key)
           state = CRED;
           break;
         }
-        if(buffer[i] == '1') {
+        if(buffer[i] == LIST_METRICS+'0') {
           req_list_metrics();
           state = START;
           return;
         }
-        if(buffer[i] == '2') {
+        if(buffer[i] == LIST_CONFIGS+'0') {
           req_list_configs();
           state = START;
           return;
         }
-        if(buffer[i] == '3') {
+        if(buffer[i] == GET_METRIC+'0') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -79,7 +79,7 @@ stdin_read_handler(struct selector_key * key)
           state = GMETRIC;
           break;
         }
-        if(buffer[i] == '4') {
+        if(buffer[i] == GET_CONFIG+'0') {
           i++;
           while(buffer[i] == ' ') {
             i++;
@@ -87,7 +87,7 @@ stdin_read_handler(struct selector_key * key)
           state = GCONFIG;
           break;
         }
-        if(buffer[i] == '5') {
+        if(buffer[i] == SET_CONFIG+'0') {
           i++;
           while(buffer[i] == ' ') {
             i++;

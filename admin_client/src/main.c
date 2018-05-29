@@ -38,7 +38,7 @@ main(const int argc, const char * argv[])
   events.sctp_data_io_event = 1;
   setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events));
 
-  /** Sets non-blocking io on server */
+  /** Sets non-blocking io on admin_socket */
 
   if(selector_fd_set_nio(admin_socket) == -1) {
     err_msg = "getting server socket flags";
