@@ -5,6 +5,9 @@
 #include <limits/limits.h>
 #include <request_parser/request_parser.h>
 #include <response_parser/response_parser.h>
+#include <requestParser/requestParser.h>
+#include <selector/selector.h>
+#include <client/client.h>
 
 #define GET_CLIENT(key) (client_t)((key)->data)
 
@@ -45,7 +48,10 @@ struct client_cdt {
     fd_selector selector;
 
     /** Request parser */
+    requestState request_parser_state;
+#ifdef DUMMY_PARSERS
     request_parser_t request_parser;
+#endif
 
     /** Response parser */
     response_parser_t response_parser;

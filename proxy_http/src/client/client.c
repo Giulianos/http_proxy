@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <requestParser/requestParser.h>
 #include "remote_handlers.h"
 #include "client_private.h"
 
@@ -36,6 +37,7 @@ client_new(const struct client_config * config)
   buffer_init(&client->post_res_parse_buf, 8192, client->post_res_parse_buf_mem);
 
   /** Initialize request parser */
+#ifdef DUMMY_PARSERS
   struct request_parser_config req_parser_config = {
       .in_buffer = &client->pre_req_parse_buf,
       .out_buffer = &client->post_req_parse_buf,
@@ -44,6 +46,7 @@ client_new(const struct client_config * config)
       .host_found_callback = client_set_host,
   };
   client->request_parser = request_parser_new(&req_parser_config);
+#endif
 
   /** Initialize response parser */
   struct response_parser_config res_parser_config = {

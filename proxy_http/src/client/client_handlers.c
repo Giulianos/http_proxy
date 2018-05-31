@@ -7,6 +7,7 @@
 #include <printf.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <requestParser/requestParser.h>
 #include "client_private.h"
 #include "remote_handlers.h"
 
@@ -31,7 +32,11 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
+#ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
+#endif
+        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_res_parse_buf,
+                                                  &client->post_req_parse_buf, client_set_host, client);
       } else {
         /** If buffer is full, stop reading from client */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
@@ -45,7 +50,11 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
+#ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
+#endif
+        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_res_parse_buf,
+                                                &client->post_req_parse_buf, client_set_host, client);
         /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
       } else {
@@ -117,9 +126,9 @@ client_block(struct selector_key * key)
 
   /** Set port accordingly, now hardcoded */
   if(res->ai_family == AF_INET) {
-    ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(80);
+    ((struct sockaddr_in *)res->ai_addr)->sin_port = client->host.port;
   } else if(res->ai_family == AF_INET6) {
-    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(80);
+    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = client->host.port;
   }
 
 

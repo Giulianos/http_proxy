@@ -1,0 +1,1 @@
+add_library(Tests myParserUtilsTest.c requestParserTest.c responseParserTest.c)
