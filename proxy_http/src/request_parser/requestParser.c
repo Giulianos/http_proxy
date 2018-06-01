@@ -40,12 +40,16 @@ checkRequest (requestState *state, buffer *bIn, buffer *bOut,
 	defaultRequestStruct(&rData);
 
 	rData.hostCallback = hostCallback;
+	rData.callbackData=callbackData;
 
 	success = checkRequestInner(&rData, bIn, bOut);
 
-	if (success == false) {
-		*state = (rData.state == OK ?
-			GENERAL_ERROR : rData.state);
+//	if (success == false) {
+//		*state = (rData.state == OK ?
+//			GENERAL_ERROR : rData.state);
+    if (success == false && !rData.isBufferEmpty) { //TODO: mfallone chekear
+        *state = (rData.state == OK ?
+                  GENERAL_ERROR : rData.state);
 	}
 
 	return success;
@@ -58,8 +62,8 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 	bool active = true;
 	
 	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
-
 	while (success && active) {
+        char c =buffer_peek(bIn);
 		switch (rData->parserState) {
 			case SPACE_TRANSITION:
 				if (!checkSpaces(rData, bIn, bOut)) {
@@ -215,6 +219,7 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 	httpMethod methodType[] = {CONNECT, DELETE, GET, HEAD, OPTIONS, POST, PUT, TRACE};
 	int length = sizeof(methodOption) / sizeof(methodOption[0]);
 	char c = READ_UP_CHAR(bIn, bOut);
+	printf("%c",c);
 	char methodPrefix[2] = {c, 0};
 
 	if (c == 0) {

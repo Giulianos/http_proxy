@@ -29,14 +29,15 @@ client_read(struct selector_key * key)
         /** Get the buffer pointer and space available */
         size_t buffer_space;
         uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
+
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
 #ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
 #endif
-        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_res_parse_buf,
-                                                  &client->post_req_parse_buf, client_set_host, client);
+        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_req_parse_buf,
+                                                  &client->post_req_parse_buf, client_set_host, client); //TODO: checks buffers
       } else {
         /** If buffer is full, stop reading from client */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
@@ -53,7 +54,7 @@ client_read(struct selector_key * key)
 #ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
 #endif
-        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_res_parse_buf,
+        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_req_parse_buf,
                                                 &client->post_req_parse_buf, client_set_host, client);
         /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
@@ -135,7 +136,7 @@ client_block(struct selector_key * key)
   /** Non-blocking connect */
   status = connect(origin_socket, res->ai_addr, res->ai_addrlen);
 
-  if(status == 0) {
+  if(status == 0) { //TODO: chequer EINPROGRESS
     printf("Connection to origin initiated!\n");
   } else {
     printf("Connection failed! (%s)\n", strerror(errno));
