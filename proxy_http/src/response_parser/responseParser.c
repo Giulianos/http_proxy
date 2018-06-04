@@ -1,4 +1,4 @@
-#include "responseParser.h"
+#include <responseParser/responseParser.h>
 
 static bool
 checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);

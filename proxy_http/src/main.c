@@ -11,10 +11,14 @@
 
 #include <selector/selector.h>
 #include <client/client.h>
+#include <logger/logger.h>
 #include "client/remote_handlers.h"
+#include "client/client_private.h"
 
 void
 listen_read_handler(struct selector_key *key);
+
+struct log l;
 
 int
 main(const int argc, const char * argv[])
@@ -88,8 +92,21 @@ main(const int argc, const char * argv[])
             .handle_block      = NULL,
     };
 
-    ss = selector_register(selector, server, &example_handler, OP_READ, NULL);
+    log_start(&l);
+    fd_handler logging_handlers = {
+            .handle_read = NULL,
+            .handle_write = log_write,
+            .handle_close = log_close
+    };
 
+    ss = selector_register(selector,l.writefd,&logging_handlers,OP_WRITE,&l);
+    if(ss != SELECTOR_SUCCESS) {
+        err_msg = "registering fd";
+        /** exit with error */
+        return 1;
+    }
+
+    ss = selector_register(selector, server, &example_handler, OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         /** exit with error */
@@ -138,7 +155,7 @@ listen_read_handler(struct selector_key *key)
     };
 
     client_t client = client_new(&config);
-
+    client->log=&l;
     selector_fd_set_nio(client_socket);
     selector_register(key->s, client_socket, &client_handlers, OP_READ, client);
 

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <requestParser/requestParser.h>
+#include <logger/logger.h>
 #include "client_private.h"
 #include "remote_handlers.h"
 
@@ -139,6 +140,7 @@ client_block(struct selector_key * key)
   if(status == 0) { //TODO: chequer EINPROGRESS
     printf("Connection to origin initiated!\n");
   } else {
+    log_sendf(client->log,"Connection failed! (%s)\n", strerror(errno));
     printf("Connection failed! (%s)\n", strerror(errno));
   }
 }
