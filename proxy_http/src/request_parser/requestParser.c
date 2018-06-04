@@ -1,21 +1,33 @@
 #include <requestParser/requestParser.h>
 
-static bool checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool checkSpaces (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkSpaces (RequestData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Start Line
-static bool extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool checkUri (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool checkUriForHost (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool checkStartLineEnd (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkUri (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkUriForHost (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkStartLineEnd (RequestData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Header
-static bool checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool extractHost (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractHost (RequestData *rData, buffer *bIn, buffer *bOut);
 
 
-void defaultRequestStruct (RequestData *rData) {
+void
+defaultRequestStruct (RequestData *rData) {
 	rData->parserState = METHOD;
 	rData->isBufferEmpty = false;
 	rData->state = OK;
@@ -31,7 +43,7 @@ void defaultRequestStruct (RequestData *rData) {
 
 bool
 checkRequest (requestState *state, buffer *bIn, buffer *bOut,
-									 void(*hostCallback)(const char *, int, void*), void * callbackData) {
+			void(*hostCallback)(const char *, int, void*), void * callbackData) {
 	bool success;
 
 	// Reservo suficiente memoria para 1 RequestData struct.
@@ -63,7 +75,6 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 	
 	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 	while (success && active) {
-        char c =buffer_peek(bIn);
 		switch (rData->parserState) {
 			case SPACE_TRANSITION:
 				if (!checkSpaces(rData, bIn, bOut)) {
@@ -219,7 +230,6 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 	httpMethod methodType[] = {CONNECT, DELETE, GET, HEAD, OPTIONS, POST, PUT, TRACE};
 	int length = sizeof(methodOption) / sizeof(methodOption[0]);
 	char c = READ_UP_CHAR(bIn, bOut);
-	printf("%c",c);
 	char methodPrefix[2] = {c, 0};
 
 	if (c == 0) {
@@ -244,9 +254,6 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 static bool
 checkUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 	if (matchFormat("HTTP", bIn, bOut, "", &(rData->isBufferEmpty))) {
-		if (PEEK_UP_CHAR(bIn) == 'S') {
-			readAndWrite(bIn, bOut);
-		}
 		if (matchFormat("://", bIn, bOut, "HTTP", &(rData->isBufferEmpty))) {
 			rData->parserState = URI_HOST;
 
@@ -274,7 +281,9 @@ cleanRelativeUri (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c;
 
 	// El relative uri no es de interés para el parser por lo que solo busco pasarlo de largo.
-	while ((c = readAndWrite(bIn, bOut)) != 0 && c != ' ' && c != '\t');
+	while ((c = buffer_peek(bIn)) != 0 && c != ' ' && c != '\t') {
+		readAndWrite(bIn, bOut);
+	};
 
 	if (c == 0)  {
 		rData->isBufferEmpty = true;
@@ -323,10 +332,9 @@ extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
 	int length = sizeof(versionType) / sizeof(versionType[0]);
-	char *format = "HTTP/1.";
 	char c;
 
-	if (matchFormat(format, bIn, bOut, "", &(rData->isBufferEmpty))) {
+	if (matchFormat("HTTP/1.", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		if ((c = readAndWrite(bIn, bOut)) != 0) {
 			for (int i = 0; i < length; i++) {
 				if (versionOption[i] == c) {
@@ -336,7 +344,7 @@ extractHttpVersion (RequestData *rData, buffer *bIn, buffer *bOut) {
 			}
 		} else {
 			rData->isBufferEmpty = true;
-			writeToBufReverse(format, bIn, strlen(format));
+			writePrefix(bIn, "HTTP/1.");
 			return false;
 		}
 	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
@@ -365,9 +373,9 @@ checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	}
 	// Si después de la start line viene un header LOOP, tengo un loop habiendo
 	// puesto dicho header artificial en una llamada anterior a checkLocalHost.
-	if (c != 'L') {
-		writeToBuf("LOOP: TRUE\r\n", bOut);
-	} else if (matchFormat("LOOP:", bIn, bOut, "", &(rData->isBufferEmpty))) {
+	if (c != 'X') {
+		writeToBuf("X-LOCALHOST: TRUE\r\n", bOut);
+	} else if (matchFormat("X-LOCALHOST:", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		rData->isLocalHost = true;
 	} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 		return false;

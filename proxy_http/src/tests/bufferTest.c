@@ -8,12 +8,16 @@
 
 #include "buffer/buffer.h"
 
-static void assertReservedRead (buffer *b);
-static void assertCompactLimit (buffer *b);
-static void assertPeek (buffer *b);
+static void
+assertReservedRead (buffer *b);
+static void
+assertCompactLimit (buffer *b);
+static void
+assertPeek (buffer *b);
 
 // Tests para las funcionalidades agregadas al buffer de Juan.
-int main (int argc, char *argv[]) {
+int
+main (int argc, char *argv[]) {
 	struct buffer b;
 	uint8_t direct_buff[6];
 	int totalSpace = 6;
@@ -29,7 +33,8 @@ int main (int argc, char *argv[]) {
 	return 0;
 }
 
-static void assertReservedRead (buffer *b) {
+static void
+assertReservedRead (buffer *b) {
 	//            R=2/W=2
 	//            ↓
 	//    +---+---+---+---+---+---+
@@ -110,7 +115,8 @@ static void assertReservedRead (buffer *b) {
 	//            infLimit=2      limit=6
 }
 
-static void assertCompactLimit (buffer *b) {
+static void
+assertCompactLimit (buffer *b) {
 	//            R=2/W=2
 	//            ↓
 	//    +---+---+---+---+---+---+
@@ -177,7 +183,8 @@ static void assertCompactLimit (buffer *b) {
 	assert(buffer_can_write(b));
 }
 
-static void assertPeek (buffer *b) {
+static void
+assertPeek (buffer *b) {
 	//            R=2/W=2
 	//            ↓
 	//    +---+---+---+---+---+---+

@@ -67,10 +67,15 @@ typedef struct RequestData {
 	void(*hostCallback)(const char *, int, void*);
 } RequestData;
 
-void defaultRequestStruct (RequestData *rData);
+/** Seteo la estructura con los valores por default previos a la primer utilización del parser. */
+void
+defaultRequestStruct (RequestData *rData);
+
+/** Función que llamo para correr el parser por primera vez. Internamente tiene una función
+* a la cual puedo despertar cada vez que tengo algo en el buffer de entrada hasta encontrar al host.
+*/
 bool
 checkRequest (requestState *state, buffer *bIn, buffer *bOut,
-							void(*hostCallback)(const char *, int, void*), void * callbackData);
-const char * errorMessage (const requestState state);
+			void(*hostCallback)(const char *, int, void*), void * callbackData);
 
 #endif

@@ -2,19 +2,31 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static void assertReadAndWrite (buffer *b, buffer *bOut);
-static void assertWriteToBuffer (buffer *bOut);
-static void assertSpaces (buffer *b);
-static void assertWriteToBufferReverse (buffer *b);
-static void assertWriteToTransfBuf (buffer *b, buffer *bOut);
-static void assertFormatNormal (buffer *b, buffer *bOut);
-static void assertFormatMissing (buffer *b, buffer *bOut);
-static void assertFormatPrefix (buffer *b, buffer *bOut);
-static void assertNumber (buffer *b, buffer *bOut);
-static void assertHexNumber (buffer *b, buffer *bOut);
-static void reset (buffer *b, buffer *bOut);
+static void
+assertReadAndWrite (buffer *b, buffer *bOut);
+static void
+assertWriteToBuffer (buffer *bOut);
+static void
+assertSpaces (buffer *b);
+static void
+assertWriteToBufferReverse (buffer *b);
+static void
+assertWriteToTransfBuf (buffer *b, buffer *bOut);
+static void
+assertFormatNormal (buffer *b, buffer *bOut);
+static void
+assertFormatMissing (buffer *b, buffer *bOut);
+static void
+assertFormatPrefix (buffer *b, buffer *bOut);
+static void
+assertNumber (buffer *b, buffer *bOut);
+static void
+assertHexNumber (buffer *b, buffer *bOut);
+static void
+reset (buffer *b, buffer *bOut);
 
-int main (int argc, char *argv[]) {
+int
+main (int argc, char *argv[]) {
 	struct buffer b;
 	uint8_t direct_buff[100];
 	int totalSpace = 100;
@@ -57,7 +69,8 @@ int main (int argc, char *argv[]) {
 	return 0;
 }
 
-static void assertReadAndWrite (buffer *b, buffer *bOut) {
+static void
+assertReadAndWrite (buffer *b, buffer *bOut) {
 	assert(readAndWrite(b, bOut) == 0);
 
 	buffer_write_reverse(b, 'H');
@@ -74,7 +87,8 @@ static void assertReadAndWrite (buffer *b, buffer *bOut) {
 	assert(buffer_read(bOut) == 'L');
 }
 
-static void assertWriteToBuffer (buffer *bOut) {
+static void
+assertWriteToBuffer (buffer *bOut) {
 	char *msg = "Hola";
 	writeToBuf(msg, bOut);
 
@@ -84,7 +98,8 @@ static void assertWriteToBuffer (buffer *bOut) {
 	assert(buffer_read(bOut) == 0);
 }
 
-static void assertSpaces (buffer *b) {
+static void
+assertSpaces (buffer *b) {
 	writeToBuf (" a", b);
 	moveThroughSpaces(b);
 	assert(buffer_read(b) == 'a');
@@ -98,7 +113,8 @@ static void assertSpaces (buffer *b) {
 	assert(buffer_read(b) == 'b');
 }
 
-static void assertWriteToBufferReverse (buffer *b) {
+static void
+assertWriteToBufferReverse (buffer *b) {
 	char *msg = "Hola";
 	writeToBufReverse(msg, b, 4);
 
@@ -108,10 +124,13 @@ static void assertWriteToBufferReverse (buffer *b) {
 	assert(buffer_read(b) == 0);
 }
 
-static void assertWriteToTransfBuf (buffer *b, buffer *bOut) {
+static void
+assertWriteToTransfBuf (buffer *b, buffer *bOut) {
 	char *msg = "Hola";
+	int length = strlen(msg);
+
 	writeToBuf(msg, b);
-	assert(writeToTransfBuf(b, bOut, strlen(msg)));
+	assert(writeToTransfBuf(b, bOut, &length));
 
 	for (int i = 0; msg[i] != 0; i++) {
 		assert(buffer_read(bOut) == msg[i]);
@@ -119,7 +138,8 @@ static void assertWriteToTransfBuf (buffer *b, buffer *bOut) {
 	assert(buffer_read(bOut) == 0);
 }
 
-static void assertFormatNormal (buffer *b, buffer *bOut) {
+static void
+assertFormatNormal (buffer *b, buffer *bOut) {
 	bool bEmpty = false;
 	char *msg = "Hola";
 	char *msg2 = "HOlA";
@@ -132,7 +152,8 @@ static void assertFormatNormal (buffer *b, buffer *bOut) {
 	assert(buffer_read(bOut) == 0);
 }
 
-static void assertFormatMissing (buffer *b, buffer *bOut) {
+static void
+assertFormatMissing (buffer *b, buffer *bOut) {
 	bool bEmpty = false;
 	char *msg = "Hola";
 	char *msg2 = "HOl";
@@ -148,7 +169,8 @@ static void assertFormatMissing (buffer *b, buffer *bOut) {
 	assert(buffer_read(bOut) == 0);
 }
 
-static void assertFormatPrefix (buffer *b, buffer *bOut) {
+static void
+assertFormatPrefix (buffer *b, buffer *bOut) {
 	bool bEmpty = false;
 	char *msg = "Mundo";
 	char *msg2 = "MUnd";
@@ -170,7 +192,8 @@ static void assertFormatPrefix (buffer *b, buffer *bOut) {
 	assert(buffer_read(bOut) == 0);
 }
 
-static void assertNumber (buffer *b, buffer *bOut) {
+static void
+assertNumber (buffer *b, buffer *bOut) {
 	bool bEmpty = false;
 	int number;
 
@@ -192,27 +215,31 @@ static void assertNumber (buffer *b, buffer *bOut) {
 	assert(number == 151);
 }
 
-static void assertHexNumber (buffer *b, buffer *bOut) {
+static void
+assertHexNumber (buffer *b, buffer *bOut) {
+	bool bEmpty = false;
 	int number;
 
 	buffer_write(b, 'g');
-	assert(!getHexNumber(&number, b, bOut));
+	assert(!getHexNumber(&number, b, bOut, "", &bEmpty));
 	assert(buffer_read(b) == 'g');
-	buffer_write(b, '8');
-	assert(getHexNumber(&number, b, bOut));
-	assert(number == 8);
-	buffer_write(b, 'c');
-	assert(getHexNumber(&number, b, bOut));
-	assert(number == 12);
-	buffer_write(b, 'C');
-	assert(getHexNumber(&number, b, bOut));
-	assert(number == 12);
-	writeToBuf ("1b", b);
-	assert(getHexNumber(&number, b, bOut));
-	assert(number == 27);
+	writeToBuf ("1A ", b); // Pongo un espacio para saber que terminó el número.
+	assert(getHexNumber(&number, b, bOut, "", &bEmpty));
+	assert(number == 26);
+	buffer_read(b);
+
+	writeToBuf ("A", b);
+	// Retorno false porque no sé si terminé de leer número.
+	assert(!getHexNumber(&number, b, bOut, "1", &bEmpty));
+	assert(bEmpty == true);
+	buffer_write(b, ' ');
+	assert(getHexNumber(&number, b, bOut, "", &bEmpty));
+	// Leo 26 (1A en hexa) con el 1 por el prefix anterior.
+	assert(number == 26);
 }
 
-static void reset (buffer *b, buffer *bOut) {
+static void
+reset (buffer *b, buffer *bOut) {
 	buffer_reset(b);
 	buffer_reset(bOut);
 }

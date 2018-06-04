@@ -26,15 +26,18 @@ client_new(const struct client_config * config)
   client->client_fd = config->fd;
   client->selector = config->selector;
 
+  int BUFFER_SIZE = 8192; // A pasar a .h como macro.
+  int RESERVED_SPACE = 255; // En principio, tomo como espacio reservado lo máximo que puede ocupar el host.
+
   /** Initialize I/O buffers */
-  client->pre_req_parse_buf_mem = malloc(8192);
-  buffer_init(&client->pre_req_parse_buf, 8192, client->pre_req_parse_buf_mem);
-  client->post_req_parse_buf_mem = malloc(8192);
-  buffer_init(&client->post_req_parse_buf, 8192, client->post_req_parse_buf_mem);
-  client->pre_res_parse_buf_mem = malloc(8192);
-  buffer_init(&client->pre_res_parse_buf, 8192, client->pre_res_parse_buf_mem);
-  client->post_res_parse_buf_mem = malloc(8192);
-  buffer_init(&client->post_res_parse_buf, 8192, client->post_res_parse_buf_mem);
+  client->pre_req_parse_buf_mem = malloc(BUFFER_SIZE);
+  buffer_init_r(&client->pre_req_parse_buf, RESERVED_SPACE, BUFFER_SIZE, client->pre_req_parse_buf_mem);
+  client->post_req_parse_buf_mem = malloc(BUFFER_SIZE);
+  buffer_init_r(&client->post_req_parse_buf, RESERVED_SPACE, BUFFER_SIZE, client->post_req_parse_buf_mem);
+  client->pre_res_parse_buf_mem = malloc(BUFFER_SIZE);
+  buffer_init_r(&client->pre_res_parse_buf, RESERVED_SPACE, BUFFER_SIZE, client->pre_res_parse_buf_mem);
+  client->post_res_parse_buf_mem = malloc(BUFFER_SIZE);
+  buffer_init_r(&client->post_res_parse_buf, RESERVED_SPACE, BUFFER_SIZE, client->post_res_parse_buf_mem);
 
   /** Initialize request parser */
 #ifdef DUMMY_PARSERS

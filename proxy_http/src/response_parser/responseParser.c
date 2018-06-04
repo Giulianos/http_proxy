@@ -1,33 +1,49 @@
-#include <responseParser/responseParser.h>
+#include "responseParser.h"
 
-static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);
-static bool checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);
+static bool
+checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Start Line
-static bool extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool isValidStatus (const int status);
+static bool
+extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+isValidStatus (const int status);
 // Prototipos Header
-static bool checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool checkLength (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkLength (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+checkType (ResponseData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Body
-static bool extractBody (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);
-static bool extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);
+static bool
+extractBody (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
+extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf);
+static bool
+extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf);
 
 
-void defaultResponseStruct (ResponseData *rData) {
+void
+defaultResponseStruct (ResponseData *rData) {
 	rData->parserState = VERSION;
 	rData->isBufferEmpty = false;
 	rData->state = OK;
 	rData->version = UNDEFINED;
 	rData->status = 0;
-	rData->bodyLength = -1;
+	rData->bodyLength = NO_BODY_LENGTH;
 	rData->isChunked = false;
 }
 
-bool checkResponse (responseState *state, buffer *bIn, buffer *bOut, buffer *bTransf) {
+bool
+checkResponse (responseState *state, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success;
 
 	// Reservo suficiente memoria para 1 ResponseData struct.
@@ -53,7 +69,8 @@ bool checkResponse (responseState *state, buffer *bIn, buffer *bOut, buffer *bTr
 	return success;
 }
 
-static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
+static bool
+checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success = true;
 	bool active = true;
 	
@@ -113,6 +130,13 @@ static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, 
 					rData->parserState = HEADERS;
 				}
 				break;
+			case TYPE_CHECK:
+				if (!checkType(rData, bIn, bOut)) {
+					success = false;
+				} else {
+					rData->parserState = HEADERS;
+				}
+				break;
 			case BODY_NORMAL:
 				if (!extractBody(rData, bIn, bOut)) {
 					success = false;
@@ -121,7 +145,7 @@ static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, 
 				}
 				break;
 			case BODY_TRANSFORMATION:
-				if (!extractBodyTransf(rData, bIn, bOut, bTransf)) {
+				if (!extractBodyTransf(rData, bIn, bTransf)) {
 					success = false;
 				} else {
 					rData->parserState = FINISHED;
@@ -151,9 +175,17 @@ static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, 
 				break;
 			case ENCODING_CHECK:
 				break;
+			case TYPE_CHECK:
+				break;
 			case BODY_NORMAL:
+				if (rData->isChunked) {
+					rData->state = CHUNKS_ERROR;
+				}
 				break;
 			case BODY_TRANSFORMATION:
+				if (rData->isChunked) {
+					rData->state = CHUNKS_ERROR;
+				}
 				break;
 			case FINISHED:
 				break;
@@ -163,7 +195,8 @@ static bool checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, 
 	return success;
 }
 
-static bool checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (moveThroughSpaces(bIn) == 0) {
 		rData->isBufferEmpty = true;
 		return false;
@@ -174,7 +207,8 @@ static bool checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 /**               COMIENZO FUNCIONES DE START LINE              **/
 
-static bool extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool extractHttpVersion
+(ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
 	int length = sizeof(versionType) / sizeof(versionType[0]);
@@ -200,7 +234,8 @@ static bool extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut) 
 	return rData->version != UNDEFINED;
 }
 
-static bool extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (getNumber(&(rData->status), bIn, bOut, "", &(rData->isBufferEmpty))) {
 		if (isValidStatus(rData->status)) {
 			return true;
@@ -210,7 +245,8 @@ static bool extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return false; // Puede que salga porque el buffer está vacío o porque encontré algo distinto de un número.
 }
 
-static bool isValidStatus (const int status) {
+static bool
+isValidStatus (const int status) {
 	return status == STATUS_OK;
 }
 
@@ -218,10 +254,12 @@ static bool isValidStatus (const int status) {
 
 /**               COMIENZO FUNCIONES DE HEADER                  **/
 
-static bool checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char aux, c;
 	bool lengthHeader = false;
 	bool transferHeader = false;
+	bool typeHeader = false;
 	bool headersEnd = false;
 
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
@@ -237,6 +275,13 @@ static bool checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 				} else if (aux == 'E') {
 					if (matchFormat("NCODING:", bIn, bOut, "CONTENT-E", &(rData->isBufferEmpty))) {
 						transferHeader = true;
+						break;
+					} else if (rData->isBufferEmpty) {
+						break;
+					}
+				} else if (aux == 'T') {
+					if (matchFormat("YPE:", bIn, bOut, "CONTENT-T", &(rData->isBufferEmpty))) {
+						typeHeader = true;
 						break;
 					} else if (rData->isBufferEmpty) {
 						break;
@@ -275,6 +320,10 @@ static bool checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 		rData->next = ENCODING_CHECK;
 		return true;
 	}
+	if (typeHeader) {
+		rData->next = TYPE_CHECK;
+		return true;
+	}
 	if (headersEnd) {
 		rData->next = FINISHED;
 		return true;
@@ -284,11 +333,13 @@ static bool checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return false;
 }
 
-static bool checkLength (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+checkLength (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return getNumber(&(rData->bodyLength), bIn, bOut, "", &(rData->isBufferEmpty));
 }
 
-static bool checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (matchFormat("CHUNKED", bIn, bOut, "", &(rData->isBufferEmpty))) {
 		rData->isChunked = true;
 		return true;
@@ -296,57 +347,131 @@ static bool checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return false;
 }
 
+// A implementar
+static bool
+checkType (ResponseData *rData, buffer *bIn, buffer *bOut) {
+	return true;
+}
+
 /**               FIN DE FUNCIONES DE HEADER                    **/
 
 /**               COMIENZO FUNCIONES DE BODY                    **/
 
-static bool extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
+static bool
+extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	// Chunked encoding sobreescribe content length.
-	if (rData->isChunked == true) {
+	if (rData->isChunked) {
 		return extractChunkedBody(rData, bIn, bOut);
 	}
-
 	if (rData->bodyLength > 0) {
-		return writeToTransfBuf(bIn, bOut, rData->bodyLength);
+		if (!writeToTransfBuf(bIn, bOut, &(rData->bodyLength))) {
+			if (rData->bodyLength > 0) {
+				rData->isBufferEmpty = true;
+			}
+			return false;
+		}
 	}
-
-	return true; // No hice nada por lo que no hubo extracción fallida.
+	return true;
 }
 
-static bool extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
-//	int chunkLength = 0;
-/*
+static bool
+extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
+	int chunkLength = 0;
+
 	// Con el do while, la última iteración corresponde a dos
 	// empty line consecutivos como corresponde.
 	do {
-		if (!getHexNumber(&chunkLength,b)) {
-			rData->state = CHUNK_HEX_ERROR;
+		if (!getHexNumber(&(rData->bodyLength), bIn, bOut, "", &(rData->isBufferEmpty))) {
+			return false;
+		}
+		chunkLength = rData->bodyLength;
+
+		if (!checkCRLF(bIn, bOut, "", &(rData->isBufferEmpty))) { // Delimitador de longitud de chunk.
+			if (rData->isBufferEmpty) {
+				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
+			}
 			return false;
 		}
 
-		if (!checkCRLF(b)) { // Delimitador de longitud de chunk.
-			rData->state = CHUNK_DELIMITER_ERROR;
+		if (!writeToTransfBuf(bIn, bOut, &(rData->bodyLength))) {
+			// si lectura se corta, en bodyLength me queda lo que me faltaba por leer.
+			if (rData->bodyLength > 0) {
+				rData->isBufferEmpty = true;
+				writePrefix(bIn, "\r\n");
+				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
+			}
 			return false;
 		}
 
-		if (!writeToTransfBuf(b, bOut, chunkLength)) {
+		if (!checkCRLF(bIn, bOut, "", &(rData->isBufferEmpty))) { // Delimitador de chunk.
+			// Si buffer queda vacío, escribo un chunk cualquiera para que la siguiente vez que lea
+			// no parezca como que tengo un fin de chunks. Al escribir en zona reservada, el chuck
+			// ficticio no va al buffer de salida en la siguiente pasada como es de esperar.
+			// Si hay un fin de chunks pongo lo que tiene que ir para el mismo.
+			writePrefix(bIn, chunkLength > 0 ? "1\r\n1" : "0\r\n");
 			return false;
 		}
-
-		if (!checkCRLF(b)) { // Delimitador de chunk.
-			rData->state = CHUNK_DELIMITER_ERROR;
-			return false;
-		}
-	} while (chunkLength != 0);*/
+	} while (chunkLength > 0);
 
 	return true;
 }
 
-static bool extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
+static bool
+extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
+	// Chunked encoding sobreescribe content length.
+	if (rData->isChunked) {
+		return extractChunkedBodyTransf(rData, bIn, bTransf);
+	}
+	if (rData->bodyLength > 0) {
+		if (!writeToTransfBuf(bIn, bTransf, &(rData->bodyLength))) {
+			if (rData->bodyLength > 0) {
+				rData->isBufferEmpty = true;
+			}
+			return false;
+		}
+	}
 	return true;
 }
 
-static bool extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
+static bool
+extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
+	int chunkLength = 0;
+
+	// Con el do while, la última iteración corresponde a dos
+	// empty line consecutivos como corresponde.
+	do {
+		if (!simpleGetHexNumber(&(rData->bodyLength), bIn, "", &(rData->isBufferEmpty))) {
+			return false;
+		}
+		chunkLength = rData->bodyLength;
+
+		if (!simpleCheckCRLF(bIn, "", &(rData->isBufferEmpty))) { // Delimitador de longitud de chunk.
+			if (rData->isBufferEmpty) {
+				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
+			}
+			return false;
+		}
+
+		if (!writeToTransfBuf(bIn, bTransf, &(rData->bodyLength))) {
+			// si lectura se corta, en bodyLength me queda lo que me faltaba por leer.
+			if (rData->bodyLength > 0) {
+				rData->isBufferEmpty = true;
+				writePrefix(bIn, "\r\n");
+				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
+			}
+			return false;
+		}
+
+		if (!simpleCheckCRLF(bIn, "", &(rData->isBufferEmpty))) { // Delimitador de chunk.
+			// Si buffer queda vacío, escribo un chunk cualquiera para que la siguiente vez que lea
+			// no parezca como que tengo un fin de chunks. Al escribir en zona reservada, el chuck
+			// ficticio no va al buffer de salida en la siguiente pasada como es de esperar.
+			// Si hay un fin de chunks pongo lo que tiene que ir para el mismo.
+			writePrefix(bIn, chunkLength > 0 ? "1\r\n1" : "0\r\n");
+			return false;
+		}
+	} while (chunkLength > 0);
+
 	return true;
 }
 

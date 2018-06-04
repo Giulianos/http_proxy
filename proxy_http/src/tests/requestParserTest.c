@@ -1,35 +1,51 @@
 #include "../request_parser/requestParser.c" // Source code included to test static functions.
 #include <assert.h>
 
-static void assertCompleteMethod (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteMethod (RequestData *rData, buffer *b, buffer *bOut);
-static void assertCompleteUriHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteUriHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertCompleteHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertVersion (RequestData *rData, buffer *b, buffer *bOut);
-static void assertUri (RequestData *rData, buffer *b, buffer *bOut);
-static void assertLocalHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertHostHeader (RequestData *rData, buffer *b, buffer *bOut);
-static void assertCompleteRequest (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteRequestWithHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteRequestWithUriHost (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteRequestWithHostByByte (RequestData *rData, buffer *b, buffer *bOut);
-static void assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer *b, buffer *bOut);
-static void insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *bOut);
-static void resetData (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertCompleteMethod (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteMethod (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertCompleteUriHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteUriHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertCompleteHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertVersion (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertUri (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertLocalHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertHostHeader (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertCompleteRequest (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteRequestWithHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteRequestWithUriHost (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteRequestWithHostByByte (RequestData *rData, buffer *b, buffer *bOut);
+static void
+assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer *b, buffer *bOut);
+static void
+insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *bOut);
+static void
+resetData (RequestData *rData, buffer *b, buffer *bOut);
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
-
-int main (int argc, char *argv[]) {
+int
+main (int argc, char *argv[]) {
 	RequestData *rData = (RequestData *) malloc(sizeof(RequestData));
 	struct buffer b;
 	uint8_t direct_buff[100];
 	int totalSpace = 100;
 	int reservedSpace = 20;
 	struct buffer bOut;
-	uint8_t direct_buff_out[30];
-	int totalSpaceOut = 30;
+	uint8_t direct_buff_out[100];
+	int totalSpaceOut = 100;
 	buffer_init_r(&b, reservedSpace, totalSpace, direct_buff);
 	buffer_init(&bOut, totalSpaceOut, direct_buff_out);
 
@@ -59,7 +75,8 @@ int main (int argc, char *argv[]) {
 	return 0;
 }
 
-static void assertCompleteMethod (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertCompleteMethod (RequestData *rData, buffer *b, buffer *bOut) {
 	// Métodos soportados.
 	insertToBuffer(rData, "Get", b, bOut);
 	assert(extractHttpMethod(rData, b, bOut));
@@ -80,7 +97,8 @@ static void assertCompleteMethod (RequestData *rData, buffer *b, buffer *bOut) {
 	assert(rData->method == PUT);
 }
 
-static void assertIncompleteMethod (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteMethod (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "HeA", b, bOut);
 	assert(!extractHttpMethod(rData, b, bOut));
 	assert(rData->method == UNDEFINED_M);
@@ -90,7 +108,8 @@ static void assertIncompleteMethod (RequestData *rData, buffer *b, buffer *bOut)
 	assert(rData->method == HEAD);
 }
 
-static void assertCompleteUriHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertCompleteUriHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "example.org/", b, bOut);
 	assert(checkUriForHost(rData, b, bOut));
 	assert(strcmp("example.org", rData->host) == 0);
@@ -105,7 +124,8 @@ static void assertCompleteUriHost (RequestData *rData, buffer *b, buffer *bOut) 
 	assert(rData->port == 8080);
 }
 
-static void assertIncompleteUriHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteUriHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "example.o", b, bOut);
 	assert(!checkUriForHost(rData, b, bOut));
 	assert(strcmp("example.org", rData->host) != 0);
@@ -123,7 +143,8 @@ static void assertIncompleteUriHost (RequestData *rData, buffer *b, buffer *bOut
 	assert(rData->port == 9);
 }
 
-static void assertCompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertCompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "example.org\r", b, bOut);
 	assert(extractHost(rData, b, bOut));
 	assert(strcmp("example.org", rData->host) == 0);
@@ -138,7 +159,8 @@ static void assertCompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
 	assert(rData->port == 8080);
 }
 
-static void assertIncompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "example.o", b, bOut);
 	assert(!extractHost(rData, b, bOut));
 	assert(strcmp("example.org", rData->host) != 0);
@@ -156,7 +178,8 @@ static void assertIncompleteHost (RequestData *rData, buffer *b, buffer *bOut) {
 	assert(rData->port == 9);
 }
 
-static void assertVersion (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertVersion (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "hTt", b, bOut);
 	assert(!extractHttpVersion(rData, b, bOut));
 	writeToBuf("p/1.", b);
@@ -167,11 +190,12 @@ static void assertVersion (RequestData *rData, buffer *b, buffer *bOut) {
 	assert(rData->version == V_1_1);
 }
 
-static void assertUri (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertUri (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "ht", b, bOut);
 	assert(!checkUri(rData, b, bOut));
 	assert(PEEK_UP_CHAR(b) == 'H');
-	writeToBuf("tps", b);
+	writeToBuf("tp", b);
 	assert(!checkUri(rData, b, bOut));
 	assert(PEEK_UP_CHAR(b) == 'H');
 	writeToBuf("://", b);
@@ -190,20 +214,22 @@ static void assertUri (RequestData *rData, buffer *b, buffer *bOut) {
 	assert(rData->port == 8080);
 }
 
-static void assertLocalHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertLocalHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "Test:\r\n", b, bOut);
 	assert(!checkLocalHost(rData, b, bOut));
 	assert(!rData->isLocalHost);
 
-	insertToBuffer(rData, "Lo", b, bOut);
+	insertToBuffer(rData, "X-LOCaL", b, bOut);
 	assert(!checkLocalHost(rData, b, bOut));
 	assert(!rData->isLocalHost);
-	writeToBuf("op:\r\n", b);
+	writeToBuf("HOST:\r\n", b);
 	assert(checkLocalHost(rData, b, bOut));
 	assert(rData->isLocalHost);
 }
 
-static void assertHostHeader (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertHostHeader (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "gdgd\r\n\r", b, bOut);
 	assert(!checkHostHeader(rData, b, bOut));
 	assert(rData->isBufferEmpty);
@@ -223,7 +249,8 @@ static void assertHostHeader (RequestData *rData, buffer *b, buffer *bOut) {
 	// por lo que no guardo el Host:
 }
 
-static void assertCompleteRequest (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertCompleteRequest (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "gEt /foo HTtP/1.1\r\nHost: example.org:8080\r\n", b, bOut);
 	assert(checkRequestInner(rData, b, bOut));
 	assert(rData->method == GET);
@@ -232,7 +259,8 @@ static void assertCompleteRequest (RequestData *rData, buffer *b, buffer *bOut) 
 	assert(rData->port == 8080);
 }
 
-static void assertIncompleteRequestWithHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteRequestWithHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "gE", b, bOut);
 	assert(rData->parserState == METHOD);
 	assert(!checkRequestInner(rData, b, bOut));
@@ -273,7 +301,8 @@ static void assertIncompleteRequestWithHost (RequestData *rData, buffer *b, buff
 	assert(rData->port == 8080);
 }
 
-static void assertIncompleteRequestWithUriHost (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteRequestWithUriHost (RequestData *rData, buffer *b, buffer *bOut) {
 	insertToBuffer(rData, "gEt http:/", b, bOut);
 	assert(!checkRequestInner(rData, b, bOut));
 	assert(rData->parserState == URI);
@@ -287,8 +316,10 @@ static void assertIncompleteRequestWithUriHost (RequestData *rData, buffer *b, b
 	assert(rData->port == 8080);
 }
 
-static void assertIncompleteRequestWithHostByByte (RequestData *rData, buffer *b, buffer *bOut) {
-	char *msg = "gEt /foo HTtP/1.1\r\nHost: example.org:8080";
+static void
+assertIncompleteRequestWithHostByByte (RequestData *rData, buffer *b, buffer *bOut) {
+	char *msg = "gEt \t /foo HTtP/1.1\r\nHost: example.org:8080";
+	char *msgOut = "gEt /foo HTtP/1.1\r\nX-LOCALHOST: TRUE\r\nHost: example.org:8080";
 	char aux[2] = {0};
 	insertToBuffer(rData, "", b, bOut);
 	int i = 0;
@@ -303,9 +334,16 @@ static void assertIncompleteRequestWithHostByByte (RequestData *rData, buffer *b
 	assert(rData->parserState == FINISHED);
 	assert(strcmp("example.org", rData->host) == 0);
 	assert(rData->port == 8080);
+
+	// Veo que en la salida queda lo que espero
+	for (int i = 0; msgOut[i] != 0; i++) {
+		assert(msgOut[i] == buffer_read(bOut));
+	}
+	assert(!buffer_can_read(bOut));
 }
 
-static void assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer *b, buffer *bOut) {
 	char *msg = "gEt http://userinfo@example.org:8080";
 	char aux[2] = {0};
 	insertToBuffer(rData, "", b, bOut);
@@ -321,9 +359,16 @@ static void assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer
 	assert(rData->parserState == FINISHED);
 	assert(strcmp("example.org", rData->host) == 0);
 	assert(rData->port == 8080);
+
+	// Veo que en la salida queda lo que espero
+	for (int i = 0; msg[i] != 0; i++) {
+		assert(msg[i] == buffer_read(bOut));
+	}
+	assert(!buffer_can_read(bOut));
 }
 
-static void insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *bOut) {
+static void
+insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *bOut) {
 	int i = 0;
 
 	resetData (rData, b, bOut);
@@ -334,7 +379,8 @@ static void insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *b
 	}
 }
 
-static void resetData (RequestData *rData, buffer *b, buffer *bOut) {
+static void
+resetData (RequestData *rData, buffer *b, buffer *bOut) {
 	buffer_reset(b);
 	buffer_reset(bOut);
 	rData->parserState = METHOD;
