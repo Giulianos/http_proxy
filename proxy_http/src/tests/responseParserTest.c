@@ -126,7 +126,7 @@ assertCompleteResponseWithLengthAndTransf (ResponseData *rData, buffer *b, buffe
 
 static void
 assertCompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
-	insertToBuffer(rData, "HTTP/1.1 200 OK\r\nconTent-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
+	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->parserState == FINISHED);
 	assert(rData->version == V_1_1);
@@ -138,7 +138,7 @@ assertCompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, b
 static void
 assertCompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	char *msg = "Wikipedia";
-	insertToBuffer(rData, "HTTP/1.1 200 OK\r\nconTent-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
+	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
 	rData->withTransf = true;
 	assert(checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->version == V_1_1);
@@ -161,13 +161,13 @@ assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut,
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->version == V_1_1);
 	assert(rData->parserState == STATUS);
-	writeToBuf("0 OK\r\nconTent-enc", b);
+	writeToBuf("0 OK\r\ntransfer-enc", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->status == 200);
 	assert(rData->parserState == HEADERS);
 	writeToBuf("oDing:c", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == ENCODING_CHECK);
+	assert(rData->parserState == CHUNKED_CHECK);
 	writeToBuf("hunkEd\r\n\r\n", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->isChunked);
@@ -182,7 +182,7 @@ assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut,
 static void
 assertIncompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	char *msg = "Wikipedia";
-	insertToBuffer(rData, "HTTP/1.1 200 OK\r\nconTent-encoDing:chunkEd\r\n\r\n", b, bOut);
+	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n", b, bOut);
 	rData->withTransf = true;
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->isChunked);
@@ -227,7 +227,7 @@ assertIncompleteResponseWithLengthByByte (ResponseData *rData, buffer *b, buffer
 
 static void
 assertIncompleteResponseWithChunkByByte (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
-	char *msg = "HTTP/1.1 200 OK\r\nconTent-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n";
+	char *msg = "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n";
 	char aux[2] = {0};
 	insertToBuffer(rData, "", b, bOut);
 	int i = 0;
@@ -249,7 +249,7 @@ assertIncompleteResponseWithChunkByByte (ResponseData *rData, buffer *b, buffer 
 static void
 assertIncompleteResponseWithChunkAndTransfByByte (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	char *msgTransf = "Wikipedia";
-	char *msg = "HTTP/1.1 200 OK\r\nconTent-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n";
+	char *msg = "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n";
 	char aux[2] = {0};
 	insertToBuffer(rData, "", b, bOut);
 	rData->withTransf = true;
@@ -293,6 +293,7 @@ resetData (ResponseData *rData, buffer *b, buffer *bOut) {
 	rData->version = UNDEFINED;
 	rData->status = 0;
 	rData->bodyLength = -1;
+	rData->cEncoding = IDENTITY;
 	rData->isChunked = false;
 	rData->withTransf = false;
 }

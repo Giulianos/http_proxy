@@ -17,6 +17,8 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 checkLength (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
+checkEncoding (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
 checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 checkType (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -39,7 +41,9 @@ defaultResponseStruct (ResponseData *rData) {
 	rData->version = UNDEFINED;
 	rData->status = 0;
 	rData->bodyLength = NO_BODY_LENGTH;
+	rData->cEncoding = IDENTITY;
 	rData->isChunked = false;
+	rData->withTransf = false;
 }
 
 bool
@@ -124,6 +128,13 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				}
 				break;
 			case ENCODING_CHECK:
+				if (!checkEncoding(rData, bIn, bOut)) {
+					success = false;
+				} else {
+					rData->parserState = HEADERS;
+				}
+				break;
+			case CHUNKED_CHECK:
 				if (!checkChunked(rData, bIn, bOut)) {
 					success = false;
 				} else {
@@ -174,6 +185,8 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 			case LENGTH_CHECK:
 				break;
 			case ENCODING_CHECK:
+				break;
+			case CHUNKED_CHECK:
 				break;
 			case TYPE_CHECK:
 				break;
@@ -247,7 +260,7 @@ extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 isValidStatus (const int status) {
-	return status == STATUS_OK;
+	return status == STATUS_OK || status == STATUS_NO_CONTENT;
 }
 
 /**               FIN DE FUNCIONES DE START LINE                **/
@@ -258,6 +271,7 @@ static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char aux, c;
 	bool lengthHeader = false;
+	bool contentEncodingHeader = false;
 	bool transferHeader = false;
 	bool typeHeader = false;
 	bool headersEnd = false;
@@ -274,7 +288,7 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 					}
 				} else if (aux == 'E') {
 					if (matchFormat("NCODING:", bIn, bOut, "CONTENT-E", &(rData->isBufferEmpty))) {
-						transferHeader = true;
+						contentEncodingHeader = true;
 						break;
 					} else if (rData->isBufferEmpty) {
 						break;
@@ -295,6 +309,7 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 				break;
 			}
 		} else if (c == 'T') {
+
 			if (matchFormat("RANSFER-ENCODING:", bIn, bOut, "T", &(rData->isBufferEmpty))) {
 				transferHeader = true;
 				break;
@@ -316,8 +331,12 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 		rData->next = LENGTH_CHECK;
 		return true;
 	}
-	if (transferHeader) {
+	if (contentEncodingHeader) {
 		rData->next = ENCODING_CHECK;
+		return true;
+	}
+	if (transferHeader) {
+		rData->next = CHUNKED_CHECK;
 		return true;
 	}
 	if (typeHeader) {
@@ -336,6 +355,15 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 static bool
 checkLength (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return getNumber(&(rData->bodyLength), bIn, bOut, "", &(rData->isBufferEmpty));
+}
+
+static bool
+checkEncoding (ResponseData *rData, buffer *bIn, buffer *bOut) {
+	if (matchFormat("GZIP", bIn, bOut, "", &(rData->isBufferEmpty))) {
+		rData->cEncoding = GZIP;
+		return true;
+	}
+	return false;
 }
 
 static bool

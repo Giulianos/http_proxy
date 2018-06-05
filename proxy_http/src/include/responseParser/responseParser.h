@@ -10,6 +10,7 @@
 
 // Códigos de status
 #define STATUS_OK 200
+#define STATUS_NO_CONTENT 204
 
 #define NO_BODY_LENGTH -1
 
@@ -22,6 +23,7 @@ typedef enum {
 	HEADERS,
 	LENGTH_CHECK,
 	ENCODING_CHECK,
+	CHUNKED_CHECK,
 	TYPE_CHECK,
 	BODY_NORMAL,
 	BODY_TRANSFORMATION,
@@ -32,6 +34,10 @@ typedef enum {
 typedef enum {
 	UNDEFINED, V_1_0, V_1_1
 } httpVersion;
+
+typedef enum {
+	IDENTITY, GZIP
+} contentEncoding;
 
 typedef enum {
 	OK, GENERAL_ERROR,
@@ -49,18 +55,12 @@ typedef struct ResponseData {
 	httpVersion version;
 	int status;
 	int bodyLength; // Si estoy en modo chunk lo uso para cada chunk.
+	contentEncoding cEncoding;
 	bool isChunked;
 	bool withTransf; // Con transformación.
 } ResponseData;
 
-/** Seteo la estructura con los valores por default previos a la primer utilización del parser. */
-void
-defaultResponseStruct (ResponseData *rData);
-
-/** Función que llamo para correr el parser por primera vez. Internamente tiene una función
-* a la cual puedo despertar cada vez que tengo algo en el buffer de entrada hasta encontrar al host.
-*/
-bool
-checkResponse (responseState *state, buffer *b, buffer *bOut, buffer *bTransf);
+void defaultResponseStruct (ResponseData *rData);
+bool checkResponse (responseState *state, buffer *b, buffer *bOut, buffer *bTransf);
 
 #endif
