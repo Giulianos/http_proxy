@@ -50,6 +50,9 @@ struct client_cdt {
     /** Request parser */
     requestState request_parser_state;
 
+    //requestdata
+    RequestData req_data;
+
     struct log* log;
 #ifdef DUMMY_PARSERS
     request_parser_t request_parser;

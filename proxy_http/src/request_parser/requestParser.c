@@ -42,27 +42,27 @@ defaultRequestStruct (RequestData *rData) {
 }
 
 bool
-checkRequest (requestState *state, buffer *bIn, buffer *bOut,
+checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 			void(*hostCallback)(const char *, int, void*), void * callbackData) {
 	bool success;
 
 	// Reservo suficiente memoria para 1 RequestData struct.
-	RequestData rData;
+	RequestData *rData=rd;
 
-	defaultRequestStruct(&rData);
+//	defaultRequestStruct(&rData);
 
-	rData.hostCallback = hostCallback;
-	rData.callbackData=callbackData;
+	rData->hostCallback = hostCallback;
+	rData->callbackData=callbackData;
 
-	success = checkRequestInner(&rData, bIn, bOut);
+	success = checkRequestInner(rData, bIn, bOut);
 
 //	if (success == false) {
 //		*state = (rData.state == OK ?
 //			GENERAL_ERROR : rData.state);
-    if (success == false && !rData.isBufferEmpty) { //TODO: mfallone chekear
-        *state = (rData.state == OK ?
-                  GENERAL_ERROR : rData.state);
-	}
+//    if (success == false && !rData.isBufferEmpty) { //TODO: mfallone chekear
+//        *state = (rData.state == OK ?
+//                  GENERAL_ERROR : rData.state);
+//	}
 
 	return success;
 }
@@ -72,7 +72,8 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 	bool aux;
 	bool success = true;
 	bool active = true;
-	
+
+
 	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 	while (success && active) {
 		switch (rData->parserState) {
@@ -167,7 +168,8 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case FINISHED:
-					active = false;
+
+                active = false;
 				break;
 		}
 	}
@@ -179,7 +181,7 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 			case SPACE_TRANSITION:
 				break;
 			case METHOD:
-				rData->state = (rData->method == UNDEFINED_M ? 
+				rData->state = (rData->method == UNDEFINED_M ?
 						GENERAL_METHOD_ERROR : UNSUPPORTED_METHOD_ERROR);
 				break;
 			case URI:
@@ -205,6 +207,7 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				rData->state = HOST_ERROR;
 				break;
 			case FINISHED:
+				//readAndWrite(bIn,bOut);
 				break;
 		}
 	}
@@ -232,7 +235,7 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c = READ_UP_CHAR(bIn, bOut);
 	char methodPrefix[2] = {c, 0};
 
-	if (c == 0) {
+    if (c == 0) {
 		rData->isBufferEmpty = true;
 		return false;
 	}
@@ -388,7 +391,6 @@ checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c;
 	bool hostHeader = false;
 	bool headersEnd = false;
-
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
 		if (c == 'H') {
 			if (matchFormat("OST:", bIn, bOut, "H", &(rData->isBufferEmpty))) {

@@ -27,6 +27,8 @@ client_new(const struct client_config * config)
   client->origin_fd = -1;
   client->client_fd = config->fd;
   client->selector = config->selector;
+  defaultRequestStruct(&client->req_data);
+
 
   int BUFFER_SIZE = 8192; // A pasar a .h como macro.
   int RESERVED_SPACE = 255; // En principio, tomo como espacio reservado lo máximo que puede ocupar el host.

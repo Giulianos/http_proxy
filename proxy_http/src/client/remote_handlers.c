@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <response_parser/response_parser.h>
+#include <logger/logger.h>
 #include "remote_handlers.h"
 #include "client_private.h"
 
@@ -41,10 +42,17 @@ remote_write(struct selector_key * key)
   switch(client->state) {
     case SEND_REQ:
       if(buffer_can_read(&client->post_req_parse_buf)) {
+
         printf("Sending request..\n");
         size_t buffer_size;
         uint8_t * buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
         ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
+        if(written_bytes==-1) {
+          printf("Connection failed! (%s)\n", strerror(errno));
+          exit(43); //TODO ARREGLARd
+         }
+
+
         buffer_read_adv(&client->post_req_parse_buf, written_bytes);
         /** As i read from the buffer, read from the client */
         selector_set_interest(client->selector, client->client_fd, OP_READ);

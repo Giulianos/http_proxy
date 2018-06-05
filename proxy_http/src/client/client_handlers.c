@@ -53,8 +53,11 @@ client_read(struct selector_key * key)
 #ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
 #endif
-        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_req_parse_buf,
+        client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                   &client->post_req_parse_buf, client_set_host, client); //TODO: checks buffers
+        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
+
+
       } else {
         /** If buffer is full, stop reading from client */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
@@ -71,8 +74,9 @@ client_read(struct selector_key * key)
 #ifdef DUMMY_PARSERS
         request_parser_parse(client->request_parser);
 #endif
-        client->request_complete = checkRequest(&client->request_parser_state, &client->pre_req_parse_buf,
+        client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                 &client->post_req_parse_buf, client_set_host, client);
+
         /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
       } else {
@@ -162,13 +166,15 @@ client_block(struct selector_key * key)
           exit(42);//TODO explota fuerte
       }
 
-      st = selector_register(key->s, origin_socket, &remote_handlers, OP_WRITE, client);
+      st = selector_register(key->s, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
       if(SELECTOR_SUCCESS != st) {
           exit(111);//TODO explota fuerte
       }
+      printf("Connected!\n");
   }  else {
     log_sendf(client->log,"Connection failed! (%s)\n", strerror(errno));
   }
+
 }
 
 void

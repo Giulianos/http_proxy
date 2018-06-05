@@ -75,7 +75,7 @@ defaultRequestStruct (RequestData *rData);
 * a la cual puedo despertar cada vez que tengo algo en el buffer de entrada hasta encontrar al host.
 */
 bool
-checkRequest (requestState *state, buffer *bIn, buffer *bOut,
+checkRequest (RequestData* rd,buffer *bIn, buffer *bOut,
 			void(*hostCallback)(const char *, int, void*), void * callbackData);
 
 #endif
