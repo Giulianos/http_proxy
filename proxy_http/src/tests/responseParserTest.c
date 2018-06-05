@@ -1,4 +1,4 @@
-#include "responseParser/responseParser.c" // Source code included to test static functions.
+#include "response_parser/responseParser.c" // Source code included to test static functions.
 #include <assert.h>
 
 static void
