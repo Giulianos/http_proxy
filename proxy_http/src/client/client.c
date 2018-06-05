@@ -7,6 +7,8 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <requestParser/requestParser.h>
+#include <logger/logger.h>
+#include <arpa/inet.h>
 #include "remote_handlers.h"
 #include "client_private.h"
 
@@ -151,7 +153,6 @@ request_resolv_blocking(void *data) {
 
   getaddrinfo(client->host.fqdn, NULL, &hints,
               &client->host.resolved);
-
   selector_notify_block(client->selector, client->client_fd);
 
   return 0;

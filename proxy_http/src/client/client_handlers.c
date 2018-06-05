@@ -19,6 +19,22 @@ fd_handler remote_handlers = {
     .handle_close = remote_close,
     .handle_block = remote_block,
 };
+void
+client_read(struct selector_key * key);
+void
+client_write(struct selector_key * key);
+void
+client_block(struct selector_key * key);
+void
+client_close(struct selector_key * key);
+
+fd_handler client_handlers2 = {
+        .handle_read = client_read,
+        .handle_write = client_write,
+        .handle_close = client_close,
+        .handle_block = client_block,
+};
+
 
 void
 client_read(struct selector_key * key)
@@ -122,26 +138,36 @@ client_block(struct selector_key * key)
 
   printf("Trying connect...\n");
   selector_fd_set_nio(origin_socket);
-  selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
+  //selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
 
   /** Set port accordingly, now hardcoded */
   if(res->ai_family == AF_INET) {
-    ((struct sockaddr_in *)res->ai_addr)->sin_port = client->host.port;
+    ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(client->host.port);
   } else if(res->ai_family == AF_INET6) {
-    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = client->host.port;
+    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(client->host.port);
   }
 
 
   /** Non-blocking connect */
+
   status = connect(origin_socket, res->ai_addr, res->ai_addrlen);
 
-  if(status == 0) { //TODO: chequer EINPROGRESS
-    printf("Connection to origin initiated!\n");
-  } else {
+  if(status == 0) {
+      printf("Connection to origin initiated!\n");
+  }else if(errno==EINPROGRESS){ //si la conexion esta en proceso
+      selector_status st = selector_set_interest_key(key, OP_NOOP);
+      if(SELECTOR_SUCCESS != st) {
+          exit(42);//TODO explota fuerte
+      }
+
+      st = selector_register(key->s, origin_socket, &remote_handlers, OP_WRITE, client);
+      if(SELECTOR_SUCCESS != st) {
+          exit(111);//TODO explota fuerte
+      }
+  }  else {
     log_sendf(client->log,"Connection failed! (%s)\n", strerror(errno));
-    printf("Connection failed! (%s)\n", strerror(errno));
   }
 }
 

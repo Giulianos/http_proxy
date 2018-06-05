@@ -99,7 +99,7 @@ main(const int argc, const char * argv[])
             .handle_close = log_close
     };
 
-    ss = selector_register(selector,l.writefd,&logging_handlers,OP_WRITE,&l);
+   // ss = selector_register(selector,l.writefd,&logging_handlers,OP_WRITE,&l);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         /** exit with error */
