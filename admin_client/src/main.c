@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <msg_queue/msg_queue.h>
+#include <print_queue/print_queue.h>
 
 int
 main(const int argc, const char * argv[])
@@ -133,9 +135,30 @@ main(const int argc, const char * argv[])
     return 1;
   }
 
+  printf("Bienvenido Administrador\n"
+                 "0) Enviar credenciales (password)\n"
+                 "1) Listar metricas\n"
+                 "2) Listar configuraciones\n"
+                 "3) Obtener metrica (indicar numero de metrica)\n"
+                 "4) Obtener configuracion (indicar numero de configuracion)\n"
+                 "5) Setear configuracion (indicar numero de configuracion y valor deseado\n"
+                 "6) Cerrar\n");
+
   for(;;) {
       err_msg = NULL;
+      if(q_is_empty()) {
+        selector_set_interest(selector, admin_socket, OP_READ);
+      }
+      if(pq_is_empty()) {
+        selector_set_interest(selector, STDOUT_FILENO, OP_NOOP);
+      }
       ss = selector_select(selector);
+      if(!q_is_empty()) {
+        selector_set_interest(selector, admin_socket, OP_READ | OP_WRITE);
+      }
+      if(!pq_is_empty()) {
+        selector_set_interest(selector, STDOUT_FILENO, OP_WRITE);
+      }
       if(ss != SELECTOR_SUCCESS) {
           err_msg = "serving";
           /** exit with error */

@@ -50,6 +50,7 @@ offer(msg_t * msg)
   }
 
   last->next = qnode;
+  last = last->next;
   return 0;
 }
 

@@ -5,6 +5,7 @@
 #include <serializer/serializer.h>
 #include <actions/actions.h>
 #include "handlers.h"
+#include <stdio.h>
 
 void
 admin_read_handler(struct selector_key * key)
@@ -22,23 +23,24 @@ admin_read_handler(struct selector_key * key)
     return;
 
   deserialize_msg(buffer, msg);
+  printf("deserialized tipo %d\n\n", msg->type);
   switch(msg->type) {
-    case SEND_CRED+'0':
+    case SEND_CRED:
       check_credentials(msg->buffer, msg->buffer_size);
       break;
-    case LIST_METRICS+'0':
+    case LIST_METRICS:
       send_list_metrics();
       break;
-    case LIST_CONFIGS+'0':
+    case LIST_CONFIGS:
       send_list_configs();
       break;
-    case GET_METRIC+'0':
+    case GET_METRIC:
       send_metric(msg->param);
       break;
-    case GET_CONFIG+'0':
+    case GET_CONFIG:
       send_config(msg->param);
       break;
-    case SET_CONFIG+'0':
+    case SET_CONFIG:
       check_set_config(msg->param, msg->buffer, msg->buffer_size);
       break;
   }
@@ -50,7 +52,6 @@ admin_write_handler(struct selector_key * key) {
   unsigned char buffer[MAX_MSG_SIZE];
   unsigned char * pointer;
   msg_t * msg;
-  int wr_sz;
 
   if (q_is_empty())
     return;

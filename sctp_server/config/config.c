@@ -77,6 +77,8 @@ config_get_from_index(int index)
 char *
 config_get_name(unsigned char number)
 {
+  if(number >= config_size)
+    return NULL;
   return configurations[number].name;
 }
 

@@ -6,11 +6,12 @@
 #include <selector/selector.h>
 #include <sys/param.h>
 #include <bits/signum.h>
+#include <config/config.h>
+#include <msg_queue/msg_queue.h>
 #include "protocol/protocol.h"
 #include "messages/messages.h"
 #include "serializer/serializer.h"
 
-#define BUFFSIZE 800
 #define SERVPORT 9090
 #define LISTENQ 10
 
@@ -88,7 +89,7 @@ main(int argc, char * argv[])
       .msg_flags  = msg_flags,
   };
 
-  ss = selector_register(selector, admin_socket, &admin_handler, OP_READ | OP_WRITE, &admin_data);
+  ss = selector_register(selector, admin_socket, &admin_handler, OP_READ, &admin_data);
 
   if(ss != SELECTOR_SUCCESS) {
     err_msg = "registering admin_socket";
@@ -96,10 +97,22 @@ main(int argc, char * argv[])
     return 1;
   }
 
+  q_init(admin_socket, selector);
+
+  config_create("name0", "value0");
+  config_create("name1", "value1");
+  config_create("name2", "value2");
 
   for(;;) {
     err_msg = NULL;
+    if(q_is_empty()) {
+      selector_set_interest(selector, admin_socket, OP_READ);
+    }
     ss = selector_select(selector);
+    if(!q_is_empty()) {
+      printf("Something to read\n");
+      selector_set_interest(selector, admin_socket, OP_READ | OP_WRITE);
+    }
     if(ss != SELECTOR_SUCCESS) {
       err_msg = "serving";
       /** exit with error */

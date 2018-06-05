@@ -49,7 +49,6 @@ stdin_read_handler(struct selector_key * key)
 
   static state = START;
   bytes = read(key->fd, buffer, MAX_READ);
-
   while(i < bytes) {
     switch(state) {
       case START:
@@ -172,18 +171,6 @@ stdout_write_handler(struct selector_key * key)
 {
   msg_t * msg;
 
-  if(is_first_time) {
-    is_first_time = 0;
-    write(key->fd, "Bienvenido Administrador\n"
-                  "0) Enviar credenciales (password)\n"
-                  "1) Listar metricas\n"
-                  "2) Listar configuraciones\n"
-                  "3) Obtener metrica (indicar numero de metrica)\n"
-                  "4) Obtener configuracion (indicar numero de configuracion)\n"
-                  "5) Setear configuracion (indicar numero de configuracion y valor deseado\n"
-                  "6) Cerrar\n", 260);
-    return;
-  }
   if(pq_is_empty())
     return;
   while(!pq_is_empty()) {

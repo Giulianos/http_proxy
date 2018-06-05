@@ -2,7 +2,14 @@
 #define MSG_QUEUE_H
 
 #include <protocol/protocol.h>
+#include <selector/selector.h>
 
+  /**
+   *
+   * @param fd associated to the msg queue
+   */
+  void
+  q_init(int fd, fd_selector s);
 
   /**
    * @return the msg that needs to be sent (msg of the first node)

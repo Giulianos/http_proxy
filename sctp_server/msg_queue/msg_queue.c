@@ -12,8 +12,17 @@ struct qnode {
     qnode_t next;
 } ;
 
+static int msg_fd = 0;
+static fd_selector msg_s = NULL;
 static qnode_t first = NULL;
 static qnode_t last = NULL;
+
+void
+q_init(int fd, fd_selector s)
+{
+  msg_fd = fd;
+  msg_s = s;
+}
 
 msg_t *
 q_poll()
@@ -50,6 +59,9 @@ q_offer(msg_t * msg)
   }
 
   last->next = qnode;
+  last = last->next;
+
+
   return 0;
 }
 
