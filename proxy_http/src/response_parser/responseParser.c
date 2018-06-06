@@ -393,11 +393,20 @@ checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
-	if (matchFormat("CLOSE", bIn, bOut, "", &(rData->isBufferEmpty))) {
-		rData->isClose = true;
-		return true;
+	while ((c = buffer_peek(bIn)) != 0 && c != '\r') {
+		buffer_read(bIn);
+	};
+
+	if (c == 0)  {
+		rData->isBufferEmpty = true;
+		return false;
 	}
-	return false;
+
+	// Todo lo que tenga atribuido al header Connection se va y se
+	// reemplaza por close.
+	writeToBuf(" close\r\n", bOut);
+	rData->isClose = true;
+	return true;
 }
 
 // A implementar
