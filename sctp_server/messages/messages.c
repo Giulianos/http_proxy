@@ -13,6 +13,7 @@ send_msg(addr_data_t servdata, int socket, msg_t * msg)
   pointer = serialize_msg(buffer, msg);
 
 
+  printf("enviando mensaje\n");
   return sctp_sendmsg(socket, msg, pointer - buffer, servdata->addr, servdata->len, 0, 0,
                 servdata->sri.sinfo_stream, 0, 0);
 }

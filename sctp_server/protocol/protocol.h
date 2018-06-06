@@ -9,7 +9,8 @@ enum type{
     LIST_CONFIGS,
     GET_METRIC,
     GET_CONFIG,
-    SET_CONFIG
+    SET_CONFIG,
+    ERROR
 };
 
 /** error types */

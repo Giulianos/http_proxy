@@ -10,8 +10,10 @@ typedef struct addr_data * addr_data_t;
 
 struct addr_data {
     struct sockaddr * addr;
-    socklen_t len;
-    struct sctp_sndrcvinfo sri;
+    socklen_t addr_len;
+    struct sctp_sndrcvinfo * sri;
+    struct sockaddr_in * peer;
+    socklen_t peer_len;
 };
 
 void

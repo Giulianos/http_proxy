@@ -23,11 +23,18 @@ main(int argc, char * argv[])
   fd_selector      selector = NULL;
 
   int admin_socket, msg_flags;
+  int return_value;
   struct sockaddr_in serveraddr, cliaddr;
   struct sctp_sndrcvinfo sri;
   struct sctp_event_subscribe evnts;
 
   admin_socket = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+  if(admin_socket < 0) {
+    err_msg = "creating socket";
+    /** exit with error */
+    printf("%s\n",err_msg);
+    return 1;
+  }
 
   bzero(&serveraddr, sizeof(serveraddr));
 
@@ -35,13 +42,31 @@ main(int argc, char * argv[])
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons(SERVPORT);
 
-  bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+  return_value = bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+  if(return_value < 0) {
+    err_msg = "binding socket";
+    /** exit with error */
+    printf("%s\n",err_msg);
+    return 1;
+  }
 
   bzero(&evnts, sizeof(evnts));
   evnts.sctp_data_io_event = 1;
-  setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &evnts, sizeof(evnts));
+  return_value = setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &evnts, sizeof(evnts));
+  if(return_value < 0) {
+    err_msg = "setting socket's options";
+    /** exit with error */
+    printf("%s\n",err_msg);
+    return 1;
+  }
 
-  listen(admin_socket, LISTENQ);
+  return_value = listen(admin_socket, LISTENQ);
+  if(return_value < 0) {
+    err_msg = "listening socket";
+    /** exit with error */
+    printf("%s\n",err_msg);
+    return 1;
+  }
 
   /** Sets non-blocking io on server */
 

@@ -1,4 +1,3 @@
-#include <selector/selector.h>
 #include <protocol/protocol.h>
 #include <handlers/handlers.h>
 #include <bits/signum.h>
@@ -15,155 +14,178 @@
 #include <errno.h>
 #include <msg_queue/msg_queue.h>
 #include <print_queue/print_queue.h>
+#include <actions/actions.h>
 
 int
 main(const int argc, const char * argv[])
 {
-  const char       *err_msg = NULL;
-  selector_status  ss       = SELECTOR_SUCCESS;
-  fd_selector      selector = NULL;
-
-
+  const char *err_msg = NULL;
+  int return_value;
   int admin_socket;
   struct sockaddr_in addr;
+  struct sockaddr_in peer;
   struct sctp_event_subscribe events;
   struct sctp_sndrcvinfo sri;
+  
+  if(argc != 3) {
+    err_msg = "Usage: admin_client [ip] [port]";
+    printf("%s\n", err_msg);
+    return 1;
+  }
 
   admin_socket = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+  if(admin_socket < 0) {
+    err_msg = "creating socket";
+    printf("%s\n", err_msg);
+    return 1;
+  }
   bzero(&addr, sizeof(addr));
   addr.sin_family      = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  addr.sin_port        = htons(ADMIN_PORT);
-  inet_pton(AF_INET,"127.0.0.1", &addr.sin_addr);
-
+  addr.sin_port        = htons(atoi(argv[2]));
+  return_value = inet_pton(AF_INET,argv[1], &addr.sin_addr);
+  if(return_value <= 0) {
+    err_msg = "inet_pton";
+    printf("%s\n", err_msg);
+    return 1;
+  }
   bzero(&events, sizeof(events));
   events.sctp_data_io_event = 1;
-  setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events));
-
-  /** Sets non-blocking io on admin_socket */
-
-  if(selector_fd_set_nio(admin_socket) == -1) {
-    err_msg = "getting server socket flags";
-    /** exit with error */
-    printf("%s\n",err_msg);
+  return_value = setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events));
+  if(return_value < 0) {
+    err_msg = "setting socket options";
+    printf("%s\n", err_msg);
     return 1;
   }
-
-  if(selector_fd_set_nio(STDIN_FILENO) == -1) {
-    err_msg = "getting server socket flags";
-    /** exit with error */
-    printf("%s\n",err_msg);
-    return 1;
-  }
-
-  if(selector_fd_set_nio(STDOUT_FILENO) == -1) {
-    err_msg = "getting server socket flags";
-    /** exit with error */
-    return 1;
-  }
-
-  const struct selector_init conf = {
-          .signal = SIGALRM,
-          .select_timeout = {
-                  .tv_sec  = 10,
-                  .tv_nsec = 0,
-          },
-  };
-
-  if(selector_init(&conf) != 0) {
-      err_msg = "initializing selector";
-      /** exit with error */
-      return 1;
-  }
-
-  selector = selector_new(1024);
-  if(selector == NULL) {
-      err_msg = "unable to create selector";
-      /** exit with error */
-      return 1;
-  }
-
-  const struct fd_handler admin_handler = {
-          .handle_read       = admin_read_handler,
-          .handle_write      = admin_write_handler,
-          .handle_close      = NULL, // nada que liberar
-          .handle_block      = NULL,
-  };
-
-  const struct fd_handler stdin_handler = {
-      .handle_read       = stdin_read_handler,
-      .handle_write      = NULL,
-      .handle_close      = NULL, // nada que liberar
-      .handle_block      = NULL,
-  };
-
-  const struct fd_handler stdout_handler = {
-      .handle_read       = NULL,
-      .handle_write      = stdout_write_handler,
-      .handle_close      = NULL, // nada que liberar
-      .handle_block      = NULL,
-  };
-
   bzero(&sri, sizeof(sri));
   sri.sinfo_stream = 0;
   struct addr_data admin_data = {
       .addr       = &addr,
-      .len        = sizeof(addr),
-      .sri        = sri,
+      .addr_len   = sizeof(addr),
+      .sri        = &sri,
+      .peer       = &peer,
+      .peer_len   = sizeof(peer),
   };
 
-  ss = selector_register(selector, admin_socket, &admin_handler, OP_READ | OP_WRITE, &admin_data);
+  char buffer[MAX_READ];
+  static char param1[MAX_READ];
+  static char param2[MAX_READ];
+  enum state{START = 0, CRED, GMETRIC, GCONFIG, SCONFIG, PROTERROR, CLOSE};
+  int should_close = 0;
+  int i = 0;
+  int j = 0;
 
-  if(ss != SELECTOR_SUCCESS) {
-    err_msg = "registering admin_socket";
-    /** exit with error */
-    return 1;
+
+  static state = START;
+  while(!should_close) {
+
+    switch(state) {
+      case START:
+        show_menu();
+        while(read(STDIN_FILENO, buffer, MAX_READ) < 0) {};
+        i = 0; j = 0;
+        if(buffer[i] == SEND_CRED+'0') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          state = CRED;
+          break;
+        }
+        if(buffer[i] == LIST_METRICS+'0') {
+          req_list_metrics(&admin_data, admin_socket);
+          state = START;
+          break;
+        }
+        if(buffer[i] == LIST_CONFIGS+'0') {
+          printf("llamo a list config\n");
+          req_list_configs(&admin_data, admin_socket);
+          state = START;
+          break;
+        }
+        if(buffer[i] == GET_METRIC+'0') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          state = GMETRIC;
+          break;
+        }
+        if(buffer[i] == GET_CONFIG+'0') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          state = GCONFIG;
+          break;
+        }
+        if(buffer[i] == SET_CONFIG+'0') {
+          i++;
+          while(buffer[i] == ' ') {
+            i++;
+          }
+          state = SCONFIG;
+          break;
+        }
+        if(buffer[i] == CLOSE+'0') {
+          state = CLOSE;
+          break;
+        }
+
+      case CRED:
+        j = 0;
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j] = '\0';
+        printf("entre a cred\n");
+        send_credentials(&admin_data, admin_socket, param1);
+        state = START;
+        break;
+      case GMETRIC:
+        j = 0;
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j] = '\0';
+        printf("entre a get metric\n");
+        req_get_metric(&admin_data, admin_socket, atoi(param1));
+        state = START;
+        break;
+      case GCONFIG:
+        j = 0;
+        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j] = '\0';
+        printf("entre a get config\n");
+        req_get_config(&admin_data, admin_socket, atoi(param1));
+        state = START;
+        break;
+      case SCONFIG:
+        j = 0;
+        for(i; i < MAX_READ && buffer[i] != ' '; i++) {
+          param1[j++] = buffer[i];
+        }
+        param1[j++] = '\0';
+        i++;
+        while(buffer[i] == ' ') {
+          i++;
+        }
+        j = 0;
+        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+          param2[j++] = buffer[i];
+        }
+        param2[j] = '\0';
+        printf("entre a set config\n");
+        req_set_config(&admin_data, admin_socket, atoi(param1), param2);
+
+        state = START;
+        break;
+      case CLOSE:
+        should_close = 1;
+    }
   }
-
-  ss = selector_register(selector, STDIN_FILENO, &stdin_handler, OP_READ, NULL);
-
-  if(ss != SELECTOR_SUCCESS) {
-    err_msg = "registering stdin";
-    /** exit with error */
-    return 1;
-  }
-  ss = selector_register(selector, STDOUT_FILENO, &stdout_handler, OP_WRITE, NULL);
-
-  if(ss != SELECTOR_SUCCESS) {
-    err_msg = "registering stdoutt";
-    /** exit with error */
-    return 1;
-  }
-
-  printf("Bienvenido Administrador\n"
-                 "0) Enviar credenciales (password)\n"
-                 "1) Listar metricas\n"
-                 "2) Listar configuraciones\n"
-                 "3) Obtener metrica (indicar numero de metrica)\n"
-                 "4) Obtener configuracion (indicar numero de configuracion)\n"
-                 "5) Setear configuracion (indicar numero de configuracion y valor deseado\n"
-                 "6) Cerrar\n");
-
-  for(;;) {
-      err_msg = NULL;
-      if(q_is_empty()) {
-        selector_set_interest(selector, admin_socket, OP_READ);
-      }
-      if(pq_is_empty()) {
-        selector_set_interest(selector, STDOUT_FILENO, OP_NOOP);
-      }
-      ss = selector_select(selector);
-      if(!q_is_empty()) {
-        selector_set_interest(selector, admin_socket, OP_READ | OP_WRITE);
-      }
-      if(!pq_is_empty()) {
-        selector_set_interest(selector, STDOUT_FILENO, OP_WRITE);
-      }
-      if(ss != SELECTOR_SUCCESS) {
-          err_msg = "serving";
-          /** exit with error */
-          return 1;
-      }
-  }
-
+  printf("Adios cliente administrador!\n");
+  return 0;
 }

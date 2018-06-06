@@ -5,19 +5,22 @@
 #include <messages/messages.h>
 
 void
-send_credentials(unsigned char * pass);
+send_credentials(addr_data_t servdata, int socket, unsigned char * pass);
 void
-req_list_metrics();
+req_list_metrics(addr_data_t servdata, int socket);
 void
-req_list_configs();
+req_list_configs(addr_data_t servdata, int socket);
 void
-req_get_metric(unsigned char metric);
+req_get_metric(addr_data_t servdata, int socket, unsigned char metric);
 void
-req_get_config(unsigned char config);
+req_get_config(addr_data_t servdata, int socket, unsigned char config);
 void
-req_set_config(unsigned char config, unsigned char * value);
+req_set_config(addr_data_t servdata, int socket, unsigned char config, unsigned char * value);
 void
-error_handler(unsigned char error_type);
-
+error_handler(addr_data_t servdata, int socket, unsigned char error_type);
+void
+show_menu();
+void
+get_and_show_response(addr_data_t servdata, int socket, int is_list);
   
 #endif
