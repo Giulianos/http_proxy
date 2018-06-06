@@ -37,9 +37,9 @@ extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf);
 
 void
 defaultResponseStruct (ResponseData *rData) {
-	rData->parserState = VERSION;
+	rData->parserState = RES_VERSION;
 	rData->isBufferEmpty = false;
-	rData->state = OK;
+	rData->state = RES_OK;
 	rData->version = UNDEFINED;
 	rData->status = 0;
 	rData->bodyLength = NO_BODY_LENGTH;
@@ -50,28 +50,28 @@ defaultResponseStruct (ResponseData *rData) {
 }
 
 bool
-checkResponse (responseState *state, buffer *bIn, buffer *bOut, buffer *bTransf) {
+checkResponse (ResponseData *rd, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success;
 
 	// Reservo suficiente memoria para 1 ResponseData struct.
-	ResponseData *rData = (ResponseData *) malloc(sizeof(ResponseData));
+	//ResponseData *rData = (ResponseData *) malloc(sizeof(ResponseData));
 
-	if (rData == NULL) {
-		rData->state = ALLOCATION_ERROR;
-		fprintf(stderr, "Error: %s\n", strerror(errno));
-		return false;
-	}
+	//if (rData == NULL) {
+	//	rData->state = RES_ALLOCATION_ERROR;
+	//	fprintf(stderr, "Error: %s\n", strerror(errno));
+	//	return false;
+	//}
 
-	defaultResponseStruct(rData);
+	//defaultResponseStruct(rData);
 
-	success = checkResponseInner(rData, bIn, bOut, bTransf);
+	success = checkResponseInner(rd, bIn, bOut, bTransf);
 
-	if (success == false) {
-		*state = (rData->state == OK ?
-			GENERAL_ERROR : rData->state);
-	}
+	//if (success == false) {
+	//	*state = (rData->state == RES_OK ?
+	//		RES_GENERAL_ERROR : rData->state);
+	//}
 
-	free(rData);
+	//free(rData);
 
 	return success;
 }
@@ -85,18 +85,18 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 
 	while (success && active) {
 		switch (rData->parserState) {
-			case SPACE_TRANSITION:
+			case RES_SPACE_TRANSITION:
 				if (!checkSpaces(rData, bIn, bOut)) {
 					success = false;
 				} else {
 					rData->parserState = rData->next;
 				}
 				break;
-			case VERSION:
+			case RES_VERSION:
 				if (!extractHttpVersion(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = SPACE_TRANSITION;
+					rData->parserState = RES_SPACE_TRANSITION;
 					rData->next = STATUS;
 				}
 				break;
@@ -104,21 +104,21 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				if (!extractStatus(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
-			case HEADERS:
+			case RES_HEADERS:
 				if (!checkHeaders(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					if (rData->next == FINISHED) { // Si encontré end of headers.
+					if (rData->next == RES_FINISHED) { // Si encontré end of headers.
 						if (rData->withTransf) {
 							rData->parserState = BODY_TRANSFORMATION;
 						} else {
 							rData->parserState = BODY_NORMAL;
 						}
 					} else {
-						rData->parserState = SPACE_TRANSITION;
+						rData->parserState = RES_SPACE_TRANSITION;
 					}
 					// El next ya lo marqué dentro de checkHeaders.
 				}
@@ -127,52 +127,52 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				if (!checkLength(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case ENCODING_CHECK:
 				if (!checkEncoding(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case CHUNKED_CHECK:
 				if (!checkChunked(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case CONNECTION_CHECK:
 				if (!checkConnection(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case TYPE_CHECK:
 				if (!checkType(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = HEADERS;
+					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case BODY_NORMAL:
 				if (!extractBody(rData, bIn, bOut)) {
 					success = false;
 				} else {
-					rData->parserState = FINISHED;
+					rData->parserState = RES_FINISHED;
 				}
 				break;
 			case BODY_TRANSFORMATION:
 				if (!extractBodyTransf(rData, bIn, bTransf)) {
 					success = false;
 				} else {
-					rData->parserState = FINISHED;
+					rData->parserState = RES_FINISHED;
 				}
 				break;
-			case FINISHED:
+			case RES_FINISHED:
 					active = false;
 				break;
 		}
@@ -182,15 +182,15 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 		// Si rData->isBufferEmpty == true rompí porque no había para leer en el buffer.
 		// Sino es porque hubo un error el request.
 		switch (rData->parserState) {
-			case SPACE_TRANSITION:
+			case RES_SPACE_TRANSITION:
 				break;
-			case VERSION:
-				rData->state = VERSION_ERROR;
+			case RES_VERSION:
+				rData->state = RES_VERSION_ERROR;
 				break;
 			case STATUS:
 				rData->state = STATUS_ERROR;
 				break;
-			case HEADERS:
+			case RES_HEADERS:
 				break;
 			case LENGTH_CHECK:
 				break;
@@ -212,7 +212,7 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 					rData->state = CHUNKS_ERROR;
 				}
 				break;
-			case FINISHED:
+			case RES_FINISHED:
 				break;
 		}
 	}
@@ -282,7 +282,7 @@ isValidStatus (const int status) {
 static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char aux, c;
-	rData->next = HEADERS;
+	rData->next = RES_HEADERS;
 
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
 		if (c == 'C') {
@@ -336,7 +336,7 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 					buffer_read(bIn);
 					if ((aux = buffer_peek(bIn)) == '\n') { // Llego al CRLF CRLF.
 						buffer_read(bIn);
-						rData->next = FINISHED;
+						rData->next = RES_FINISHED;
 						if (!rData->isChunked && rData->withTransf) { // El body va a salir en chunks después de transformación.
 							writeToBuf("Transfer-Encoding: chunked\r\n", bOut);
 						}
@@ -361,7 +361,7 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 		}
 	}
 
-	if (rData->next == HEADERS) {
+	if (rData->next == RES_HEADERS) {
 		rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
 		return false;
 	}

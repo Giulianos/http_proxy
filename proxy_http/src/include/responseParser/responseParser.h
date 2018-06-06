@@ -17,10 +17,10 @@
 #define VERSION_TEXT_SIZE 3
 
 typedef enum {
-	SPACE_TRANSITION,
-	VERSION,
+	RES_SPACE_TRANSITION,
+	RES_VERSION,
 	STATUS,
-	HEADERS,
+	RES_HEADERS,
 	LENGTH_CHECK,
 	ENCODING_CHECK,
 	CHUNKED_CHECK,
@@ -28,24 +28,19 @@ typedef enum {
 	TYPE_CHECK,
 	BODY_NORMAL,
 	BODY_TRANSFORMATION,
-	FINISHED
+	RES_FINISHED
 } responseParserState;
-
-// V_2.0 is not supported.
-typedef enum {
-	UNDEFINED, V_1_0, V_1_1
-} httpVersion;
 
 typedef enum {
 	IDENTITY, GZIP
 } contentEncoding;
 
 typedef enum {
-	OK, GENERAL_ERROR,
-	START_LINE_FORMAT_ERROR, VERSION_ERROR, STATUS_ERROR,
+	RES_OK, RES_GENERAL_ERROR,
+	START_LINE_FORMAT_ERROR, RES_VERSION_ERROR, STATUS_ERROR,
 	HEADERS_END_ERROR,
 	CHUNKS_ERROR,
-	ALLOCATION_ERROR
+	RES_ALLOCATION_ERROR
 } responseState;
 
 typedef struct ResponseData {
@@ -63,6 +58,6 @@ typedef struct ResponseData {
 } ResponseData;
 
 void defaultResponseStruct (ResponseData *rData);
-bool checkResponse (responseState *state, buffer *b, buffer *bOut, buffer *bTransf);
+bool checkResponse (ResponseData *rd, buffer *b, buffer *bOut, buffer *bTransf);
 
 #endif

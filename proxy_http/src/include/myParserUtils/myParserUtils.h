@@ -17,6 +17,11 @@
 #define PEEK_UP_CHAR(b) toupper(buffer_peek(b))
 #define PEEK_DOWN_CHAR(b) tolower(buffer_peek(b))
 
+// V_2.0 is not supported.
+typedef enum {
+	UNDEFINED, V_1_0, V_1_1
+} httpVersion;
+
 /** Leo de b y escribo en bOut siempre y cuando haya algo para leer
 * de b y que no esté en una zona reservada.
 */

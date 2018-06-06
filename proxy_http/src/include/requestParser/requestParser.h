@@ -36,11 +36,6 @@ typedef enum {
 	FINISHED
 } requestParserState;
 
-// V_2.0 no es soportado.
-typedef enum {
-	UNDEFINED, V_1_0, V_1_1
-} httpVersion;
-
 typedef enum {
 	UNDEFINED_M, GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE
 } httpMethod;

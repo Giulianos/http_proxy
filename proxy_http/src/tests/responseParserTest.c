@@ -105,7 +105,7 @@ assertCompleteResponseWithLength (ResponseData *rData, buffer *b, buffer *bOut, 
 	char *msgOut = "HTTP/1.1 200 OK\r\nconTeNt-lengTh: 3\r\nConnection: close\r\n\r\nWik";
 	insertToBuffer(rData, msgIn, b, bOut);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->bodyLength == 0); // Terminé de leer todo.
@@ -135,7 +135,7 @@ static void
 assertCompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->isChunked);
@@ -162,7 +162,7 @@ assertCompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buffer
 static void
 assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	insertToBuffer(rData, "HTTP/1.", b, bOut);
-	assert(rData->parserState == VERSION);
+	assert(rData->parserState == RES_VERSION);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	writeToBuf("1 20", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
@@ -171,7 +171,7 @@ assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut,
 	writeToBuf("0 OK\r\ntransfer-enc", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->status == 200);
-	assert(rData->parserState == HEADERS);
+	assert(rData->parserState == RES_HEADERS);
 	writeToBuf("oDing:c", b);
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->parserState == CHUNKED_CHECK);
@@ -183,7 +183,7 @@ assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut,
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	writeToBuf("ki\r\n5\r\npedia\r\n0\r\n\r\n", b);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 }
 
 static void
@@ -202,7 +202,7 @@ assertIncompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buff
 	assert(!checkResponseInner(rData, b, bOut, bTransf));
 	writeToBuf("\n", b);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 
 	// Al buffer de la transformación espero haber paso solo el contenido de los chunks.
 	for (int i = 0; msg[i] != 0; i++) {
@@ -225,7 +225,7 @@ assertIncompleteResponseWithLengthByByte (ResponseData *rData, buffer *b, buffer
 		i++;
 	}
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->bodyLength == 0); // Terminé de leer todo.
@@ -246,7 +246,7 @@ assertIncompleteResponseWithChunkByByte (ResponseData *rData, buffer *b, buffer 
 		i++;
 	}
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->isChunked);
@@ -269,7 +269,7 @@ assertIncompleteResponseWithChunkAndTransfByByte (ResponseData *rData, buffer *b
 		i++;
 	}
 	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->parserState == FINISHED);
+	assert(rData->parserState == RES_FINISHED);
 
 	// Al buffer de la transformación espero haber paso solo el contenido de los chunks.
 	for (int i = 0; msgTransf[i] != 0; i++) {
@@ -294,9 +294,9 @@ static void
 resetData (ResponseData *rData, buffer *b, buffer *bOut) {
 	buffer_reset(b);
 	buffer_reset(bOut);
-	rData->parserState = VERSION;
+	rData->parserState = RES_VERSION;
 	rData->isBufferEmpty = false;
-	rData->state = OK;
+	rData->state = RES_OK;
 	rData->version = UNDEFINED;
 	rData->status = 0;
 	rData->bodyLength = NO_BODY_LENGTH;
