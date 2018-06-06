@@ -101,13 +101,20 @@ assertStatus (ResponseData *rData, buffer *b, buffer *bOut) {
 
 static void
 assertCompleteResponseWithLength (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
-	insertToBuffer(rData, "HTTP/1.1 200 OK\r\nconTeNt-lengTh:3\r\n\r\nWikipedia", b, bOut);
+	char *msgIn = "HTTP/1.1 200 OK\r\nconTeNt-lengTh:3\r\n\r\nWikipedia";
+	char *msgOut = "HTTP/1.1 200 OK\r\nconTeNt-lengTh: 3\r\nConnection: close\r\n\r\nWik";
+	insertToBuffer(rData, msgIn, b, bOut);
 	assert(checkResponseInner(rData, b, bOut, bTransf));
 	assert(rData->parserState == FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->bodyLength == 0); // Terminé de leer todo.
 	assert(buffer_read(bTransf) == 0); // Transformaciones apagadas.
+
+	for (int i = 0; msgOut[i] != 0; i++) {
+		assert(buffer_read(bOut) == msgOut[i]);
+	}
+	assert(buffer_read(bOut) == 0);
 }
 
 static void
@@ -292,7 +299,7 @@ resetData (ResponseData *rData, buffer *b, buffer *bOut) {
 	rData->state = OK;
 	rData->version = UNDEFINED;
 	rData->status = 0;
-	rData->bodyLength = -1;
+	rData->bodyLength = NO_BODY_LENGTH;
 	rData->cEncoding = IDENTITY;
 	rData->isChunked = false;
 	rData->withTransf = false;

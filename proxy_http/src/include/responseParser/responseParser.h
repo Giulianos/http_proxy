@@ -24,6 +24,7 @@ typedef enum {
 	LENGTH_CHECK,
 	ENCODING_CHECK,
 	CHUNKED_CHECK,
+	CONNECTION_CHECK,
 	TYPE_CHECK,
 	BODY_NORMAL,
 	BODY_TRANSFORMATION,
@@ -54,6 +55,7 @@ typedef struct ResponseData {
 	responseState state;
 	httpVersion version;
 	int status;
+	bool isClose; // Veo si ya puse el header Connection: close. (no soporto conexiones persistentes)
 	int bodyLength; // Si estoy en modo chunk lo uso para cada chunk.
 	contentEncoding cEncoding;
 	bool isChunked;

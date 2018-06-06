@@ -21,6 +21,8 @@ checkEncoding (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
+checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut);
+static bool
 checkType (ResponseData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Body
 static bool
@@ -42,6 +44,7 @@ defaultResponseStruct (ResponseData *rData) {
 	rData->status = 0;
 	rData->bodyLength = NO_BODY_LENGTH;
 	rData->cEncoding = IDENTITY;
+	rData->isClose = false;
 	rData->isChunked = false;
 	rData->withTransf = false;
 }
@@ -141,6 +144,13 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 					rData->parserState = HEADERS;
 				}
 				break;
+			case CONNECTION_CHECK:
+				if (!checkConnection(rData, bIn, bOut)) {
+					success = false;
+				} else {
+					rData->parserState = HEADERS;
+				}
+				break;
 			case TYPE_CHECK:
 				if (!checkType(rData, bIn, bOut)) {
 					success = false;
@@ -187,6 +197,8 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 			case ENCODING_CHECK:
 				break;
 			case CHUNKED_CHECK:
+				break;
+			case CONNECTION_CHECK:
 				break;
 			case TYPE_CHECK:
 				break;
@@ -270,86 +282,90 @@ isValidStatus (const int status) {
 static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char aux, c;
-	bool lengthHeader = false;
-	bool contentEncodingHeader = false;
-	bool transferHeader = false;
-	bool typeHeader = false;
-	bool headersEnd = false;
+	rData->next = HEADERS;
 
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
 		if (c == 'C') {
-			if (matchFormat("ONTENT-", bIn, bOut, "C", &(rData->isBufferEmpty))) {
-				if ((aux = READ_UP_CHAR(bIn, bOut)) == 'L') {
-					if (matchFormat("ENGTH:", bIn, bOut, "CONTENT-L", &(rData->isBufferEmpty))) {
-						lengthHeader = true;
-						break;
-					} else if (rData->isBufferEmpty) {
+			if (matchFormat("ON", bIn, bOut, "C", &(rData->isBufferEmpty))) {
+				if (matchFormat("TENT-", bIn, bOut, "CON", &(rData->isBufferEmpty))) {
+					if ((aux = READ_UP_CHAR(bIn, bOut)) == 'L') {
+						if (matchFormat("ENGTH:", bIn, bOut, "CONTENT-L", &(rData->isBufferEmpty))) {
+							rData->next = LENGTH_CHECK;
+							break;
+						} else if (rData->isBufferEmpty) {
+							break;
+						}
+					} else if (aux == 'E') {
+						if (matchFormat("NCODING:", bIn, bOut, "CONTENT-E", &(rData->isBufferEmpty))) {
+							rData->next = ENCODING_CHECK;
+							break;
+						} else if (rData->isBufferEmpty) {
+							break;
+						}
+					} else if (aux == 'T') {
+						if (matchFormat("YPE:", bIn, bOut, "CONTENT-T", &(rData->isBufferEmpty))) {
+							rData->next = TYPE_CHECK;
+							break;
+						} else if (rData->isBufferEmpty) {
+							break;
+						}
+					} else if (aux == 0) {
+						rData->isBufferEmpty = true;
+						writePrefix(bIn, "CONTENT-");
 						break;
 					}
-				} else if (aux == 'E') {
-					if (matchFormat("NCODING:", bIn, bOut, "CONTENT-E", &(rData->isBufferEmpty))) {
-						contentEncodingHeader = true;
-						break;
-					} else if (rData->isBufferEmpty) {
-						break;
-					}
-				} else if (aux == 'T') {
-					if (matchFormat("YPE:", bIn, bOut, "CONTENT-T", &(rData->isBufferEmpty))) {
-						typeHeader = true;
-						break;
-					} else if (rData->isBufferEmpty) {
-						break;
-					}
-				} else if (aux == 0) {
-					rData->isBufferEmpty = true;
-					writePrefix(bIn, "CONTENT-");
+				} else if (matchFormat("NECTION:", bIn, bOut, "CON", &(rData->isBufferEmpty))) {
+					rData->next = CONNECTION_CHECK;
+					break;
+				} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 					break;
 				}
 			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		} else if (c == 'T') {
-
 			if (matchFormat("RANSFER-ENCODING:", bIn, bOut, "T", &(rData->isBufferEmpty))) {
-				transferHeader = true;
+				rData->next = CHUNKED_CHECK;
 				break;
 			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		} else if (c == '\r') {
-			if (checkLF(bIn, bOut, "\r", &(rData->isBufferEmpty))
-			  && checkCRLF(bIn, bOut, "\r\n", &(rData->isBufferEmpty))) { // Busco el CRLF CRLF.
-				headersEnd = true;
-				break;
+			if (checkLF(bIn, bOut, "\r", &(rData->isBufferEmpty))) {
+				if ((aux = buffer_peek(bIn)) == '\r') {
+					buffer_read(bIn);
+					if ((aux = buffer_peek(bIn)) == '\n') { // Llego al CRLF CRLF.
+						buffer_read(bIn);
+						rData->next = FINISHED;
+						if (!rData->isChunked && rData->withTransf) { // El body va a salir en chunks después de transformación.
+							writeToBuf("Transfer-Encoding: chunked\r\n", bOut);
+						}
+						if (!rData->isClose) { // Todavía no está el header de Connection: close.
+							writeToBuf("Connection: close\r\n", bOut);
+						}
+						writeToBuf("\r\n", bOut);
+						break;
+					} else if (aux == 0) {
+						rData->isBufferEmpty = true;
+						writePrefix(bIn, "\r\n\r");
+						break;
+					}
+				} else if (aux == 0) {
+					rData->isBufferEmpty = true;
+					writePrefix(bIn, "\r\n");
+					break;
+				}
 			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		}
 	}
 
-	if (lengthHeader) {
-		rData->next = LENGTH_CHECK;
-		return true;
+	if (rData->next == HEADERS) {
+		rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
+		return false;
 	}
-	if (contentEncodingHeader) {
-		rData->next = ENCODING_CHECK;
-		return true;
-	}
-	if (transferHeader) {
-		rData->next = CHUNKED_CHECK;
-		return true;
-	}
-	if (typeHeader) {
-		rData->next = TYPE_CHECK;
-		return true;
-	}
-	if (headersEnd) {
-		rData->next = FINISHED;
-		return true;
-	}
-
-	rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
-	return false;
+	return true;
 }
 
 static bool
@@ -375,6 +391,15 @@ checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return false;
 }
 
+static bool
+checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
+	if (matchFormat("CLOSE", bIn, bOut, "", &(rData->isBufferEmpty))) {
+		rData->isClose = true;
+		return true;
+	}
+	return false;
+}
+
 // A implementar
 static bool
 checkType (ResponseData *rData, buffer *bIn, buffer *bOut) {
@@ -391,15 +416,21 @@ extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (rData->isChunked) {
 		return extractChunkedBody(rData, bIn, bOut);
 	}
-	if (rData->bodyLength > 0) {
+	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
 		if (!writeToTransfBuf(bIn, bOut, &(rData->bodyLength))) {
 			if (rData->bodyLength > 0) {
 				rData->isBufferEmpty = true;
 			}
 			return false;
 		}
+		return true;
 	}
-	return true;
+
+	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
+		readAndWrite(bIn, bOut);
+	}
+	rData->isBufferEmpty = false;
+	return false;
 }
 
 static bool
@@ -450,15 +481,21 @@ extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
 	if (rData->isChunked) {
 		return extractChunkedBodyTransf(rData, bIn, bTransf);
 	}
-	if (rData->bodyLength > 0) {
+	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
 		if (!writeToTransfBuf(bIn, bTransf, &(rData->bodyLength))) {
 			if (rData->bodyLength > 0) {
 				rData->isBufferEmpty = true;
 			}
 			return false;
 		}
+		return true;
 	}
-	return true;
+
+	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
+		readAndWrite(bIn, bTransf);
+	}
+	rData->isBufferEmpty = false;
+	return false;
 }
 
 static bool

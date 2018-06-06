@@ -143,7 +143,7 @@ uint8_t
 buffer_peek(buffer *b);
 
 /**
- * función propia - como buffer_can_write pero en zona reservada
+ * función propia - como buffer_can_write pero para zona reservada
  * y en sentido inverso.
  */
 bool
@@ -156,15 +156,16 @@ bool
 is_reserved(buffer *b);
 
 /**
- * función propia - como buffer_write_adv pero en zona inverso
+ * función propia - como buffer_write_adv pero en sentido inverso
  * y puede entrar en zona reservada.
  */
 void
 buffer_write_adv_reverse(buffer *b, const ssize_t bytes);
 
 /**
- * función propia - como buffer_write pero en zona inverso
+ * función propia - como buffer_write pero en sentido inverso
  * y puede entrar en zona reservada.
+ * En particular, se que escribo en zona reservada si el write le sigue a un buffer_compact.
  */
 void
 buffer_write_reverse(buffer *b, uint8_t c);
