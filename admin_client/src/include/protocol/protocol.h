@@ -9,7 +9,16 @@ enum type{
     LIST_CONFIGS,
     GET_METRIC,
     GET_CONFIG,
-    SET_CONFIG
+    SET_CONFIG,
+    ERROR
+};
+
+enum error_type{
+    CONFIG_NOT_FOUND = 0,
+    METRIC_NOT_FOUND,
+    CONFIG_NOT_SET,
+    INVALID_LENGTH,
+    UNEXPECTED_ERROR
 };
 
 /** error types */

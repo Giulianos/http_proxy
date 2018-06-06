@@ -16,8 +16,6 @@ void
 send_config(unsigned char config);
 void
 check_set_config(unsigned char config, unsigned char * value, int value_len);
-void
-error_handler(unsigned char error_type);
 
 
 #endif

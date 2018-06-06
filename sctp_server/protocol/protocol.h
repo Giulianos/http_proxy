@@ -13,6 +13,14 @@ enum type{
     ERROR
 };
 
+enum error_type{
+    CONFIG_NOT_FOUND = 0,
+    METRIC_NOT_FOUND,
+    CONFIG_NOT_SET,
+    INVALID_LENGTH,
+    UNEXPECTED_ERROR
+};
+
 /** error types */
 #define NO_METRIC     0
 #define NO_CONFIG     1

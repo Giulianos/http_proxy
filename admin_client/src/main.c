@@ -1,5 +1,4 @@
 #include <protocol/protocol.h>
-#include <handlers/handlers.h>
 #include <bits/signum.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,8 +11,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <msg_queue/msg_queue.h>
-#include <print_queue/print_queue.h>
 #include <actions/actions.h>
 
 int
@@ -60,7 +57,7 @@ main(const int argc, const char * argv[])
   bzero(&sri, sizeof(sri));
   sri.sinfo_stream = 0;
   struct addr_data admin_data = {
-      .addr       = &addr,
+      .addr       = (struct sockaddr *)&addr,
       .addr_len   = sizeof(addr),
       .sri        = &sri,
       .peer       = &peer,
@@ -68,17 +65,16 @@ main(const int argc, const char * argv[])
   };
 
   char buffer[MAX_READ];
-  static char param1[MAX_READ];
-  static char param2[MAX_READ];
+  char param1[MAX_READ];
+  unsigned char param2[MAX_READ];
   enum state{START = 0, CRED, GMETRIC, GCONFIG, SCONFIG, PROTERROR, CLOSE};
   int should_close = 0;
   int i = 0;
   int j = 0;
 
 
-  static state = START;
+  enum state state = START;
   while(!should_close) {
-
     switch(state) {
       case START:
         show_menu();
@@ -98,7 +94,6 @@ main(const int argc, const char * argv[])
           break;
         }
         if(buffer[i] == LIST_CONFIGS+'0') {
-          printf("llamo a list config\n");
           req_list_configs(&admin_data, admin_socket);
           state = START;
           break;
@@ -138,7 +133,6 @@ main(const int argc, const char * argv[])
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        printf("entre a cred\n");
         send_credentials(&admin_data, admin_socket, param1);
         state = START;
         break;
@@ -148,23 +142,21 @@ main(const int argc, const char * argv[])
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        printf("entre a get metric\n");
         req_get_metric(&admin_data, admin_socket, atoi(param1));
         state = START;
         break;
       case GCONFIG:
         j = 0;
-        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
           param1[j++] = buffer[i];
         }
         param1[j] = '\0';
-        printf("entre a get config\n");
         req_get_config(&admin_data, admin_socket, atoi(param1));
         state = START;
         break;
       case SCONFIG:
         j = 0;
-        for(i; i < MAX_READ && buffer[i] != ' '; i++) {
+        for(; i < MAX_READ && buffer[i] != ' '; i++) {
           param1[j++] = buffer[i];
         }
         param1[j++] = '\0';
@@ -173,17 +165,18 @@ main(const int argc, const char * argv[])
           i++;
         }
         j = 0;
-        for(i; i < MAX_READ && buffer[i] != '\n'; i++) {
+        for(; i < MAX_READ && buffer[i] != '\n'; i++) {
           param2[j++] = buffer[i];
         }
         param2[j] = '\0';
-        printf("entre a set config\n");
         req_set_config(&admin_data, admin_socket, atoi(param1), param2);
 
         state = START;
         break;
       case CLOSE:
         should_close = 1;
+      default:
+        break;
     }
   }
   printf("Adios cliente administrador!\n");

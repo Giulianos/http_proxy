@@ -31,7 +31,6 @@ main(int argc, char * argv[])
   admin_socket = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
   if(admin_socket < 0) {
     err_msg = "creating socket";
-    /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
@@ -45,7 +44,6 @@ main(int argc, char * argv[])
   return_value = bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
   if(return_value < 0) {
     err_msg = "binding socket";
-    /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
@@ -55,7 +53,6 @@ main(int argc, char * argv[])
   return_value = setsockopt(admin_socket, IPPROTO_SCTP, SCTP_EVENTS, &evnts, sizeof(evnts));
   if(return_value < 0) {
     err_msg = "setting socket's options";
-    /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
@@ -63,7 +60,6 @@ main(int argc, char * argv[])
   return_value = listen(admin_socket, LISTENQ);
   if(return_value < 0) {
     err_msg = "listening socket";
-    /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
@@ -72,7 +68,6 @@ main(int argc, char * argv[])
 
   if(selector_fd_set_nio(admin_socket) == -1) {
     err_msg = "getting server socket flags";
-    /** exit with error */
     printf("%s\n",err_msg);
     return 1;
   }
@@ -87,28 +82,28 @@ main(int argc, char * argv[])
 
   if(selector_init(&conf) != 0) {
     err_msg = "initializing selector";
-    /** exit with error */
+    printf("%s\n", err_msg);
     return 1;
   }
 
   selector = selector_new(1024);
   if(selector == NULL) {
     err_msg = "unable to create selector";
-    /** exit with error */
+    printf("%s\n", err_msg);
     return 1;
   }
 
   const struct fd_handler admin_handler = {
       .handle_read       = admin_read_handler,
       .handle_write      = admin_write_handler,
-      .handle_close      = NULL, // nada que liberar
+      .handle_close      = NULL,
       .handle_block      = NULL,
   };
 
   bzero(&sri, sizeof(sri));
   sri.sinfo_stream = 0;
   struct addr_data admin_data = {
-      .addr       = &cliaddr,
+      .addr       = (struct sockaddr *)&cliaddr,
       .len        = sizeof(cliaddr),
       .sri        = sri,
       .msg_flags  = msg_flags,
@@ -118,7 +113,7 @@ main(int argc, char * argv[])
 
   if(ss != SELECTOR_SUCCESS) {
     err_msg = "registering admin_socket";
-    /** exit with error */
+    printf("%s\n", err_msg);
     return 1;
   }
 
@@ -129,7 +124,6 @@ main(int argc, char * argv[])
   config_create("name2", "value2");
 
   for(;;) {
-    err_msg = NULL;
     if(q_is_empty()) {
       selector_set_interest(selector, admin_socket, OP_READ);
     }
@@ -140,7 +134,7 @@ main(int argc, char * argv[])
     }
     if(ss != SELECTOR_SUCCESS) {
       err_msg = "serving";
-      /** exit with error */
+      printf("%s\n", err_msg);
       return 1;
     }
   }

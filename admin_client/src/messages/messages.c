@@ -5,6 +5,11 @@
 #include <protocol/protocol.h>
 #include <errno.h>
 #include <string.h>
+#include <netinet/sctp.h>
+
+
+char *
+error_msg_to_string(enum error_type type);
 
 ssize_t
 send_msg(addr_data_t servdata, int socket, msg_t * msg)
@@ -18,9 +23,7 @@ send_msg(addr_data_t servdata, int socket, msg_t * msg)
 
   pointer = serialize_msg(buffer, msg);
   select(socket+1, NULL, &select_set, NULL, NULL);
-  printf("before sending:\n");
-//  printf("socket: %d, buffer: %x, sent_len: %d, addr: %x, struct_lent: %x, sri.sinfo: %d\n", socket, buffer, pointer - buffer, servdata->addr,
-//                            servdata->len, servdata->sri.sinfo_stream);
+
   sent_bytes = sctp_sendmsg(socket, buffer, pointer - buffer, servdata->addr, servdata->addr_len, 0, 0,
                 servdata->sri->sinfo_stream, 0, 0);
   if(sent_bytes <= 0) {
@@ -58,8 +61,37 @@ print_msg(msg_t * msg)
 {
   int i;
 
+  if(msg->type == ERROR) {
+    printf("Error: %s\n", error_msg_to_string((enum error_type)msg->param));
+    return;
+  }
+
+  if(msg->type == SET_CONFIG && msg->buffer_size == 0) {
+    printf("Seteo realizado!\n");
+    return;
+  }
+
   for(i = 0; i < msg->buffer_size; i++) {
     putchar(msg->buffer[i]);
   }
   putchar('\n');
+}
+
+char *
+error_msg_to_string(enum error_type type)
+{
+  switch(type) {
+    case CONFIG_NOT_FOUND:
+      return "Configuracion no encontrada.";
+    case METRIC_NOT_FOUND:
+      return "Metrica no encontrada.";
+    case CONFIG_NOT_SET:
+      return "No pudo setearse la configuracion.";
+    case INVALID_LENGTH:
+      return "Longitud invalida.";
+    case UNEXPECTED_ERROR:
+      return "Error inesperado. Intentelo denuevo.";
+    default:
+      return "Error desconocido.";
+  }
 }

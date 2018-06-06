@@ -66,6 +66,8 @@ metric_get_from_index(int index)
 char *
 metric_get_name(unsigned char number)
 {
+  if(number >= metric_size)
+    return NULL;
   return metrics[number].name;
 }
 

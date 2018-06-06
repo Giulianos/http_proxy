@@ -1,5 +1,4 @@
 #include <actions/actions.h>
-#include <msg_queue/msg_queue.h>
 #include <messages/messages.h>
 #include <protocol/protocol.h>
 #include <stdlib.h>
@@ -7,14 +6,14 @@
 #include <stdio.h>
 
 void
-send_credentials(addr_data_t servdata, int socket, unsigned char * pass)
+send_credentials(addr_data_t servdata, int socket, const char * pass)
 {
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = SEND_CRED;
   msg->param = 0;
-  msg->buffer_size = strlen(pass)+1;
+  msg->buffer_size = (unsigned int)strlen(pass)+1;
   msg->buffer = malloc(msg->buffer_size);
-  strncpy(msg->buffer, pass, msg->buffer_size);
+  strncpy((char *)msg->buffer, pass, msg->buffer_size);
 
   send_msg(servdata, socket, msg);
 }
@@ -38,11 +37,8 @@ req_list_configs(addr_data_t servdata, int socket)
   msg->type = LIST_CONFIGS;
   msg->param = 0;
   msg->buffer_size = 0;
-  int bytes;
 
-  printf("por mandar el mensaje\n");
   send_msg(servdata, socket, msg);
-  printf("mensaje mandado\n");
   get_and_show_response(servdata, socket, 1);
 }
 
@@ -76,17 +72,12 @@ req_set_config(addr_data_t servdata, int socket, unsigned char config, unsigned 
   msg_t * msg = malloc(sizeof(msg_t));
   msg->type = SET_CONFIG;
   msg->param = config;
-  msg->buffer_size = strlen(value)+1;
+  msg->buffer_size = (unsigned int)strlen((char *)value)+1;
   msg->buffer = malloc(msg->buffer_size);
-  strncpy(msg->buffer, value, msg->buffer_size);
+  strncpy((char *)msg->buffer, (char *)value, msg->buffer_size);
 
   send_msg(servdata, socket, msg);
-}
-
-void
-error_handler(addr_data_t servdata, int socket, unsigned char error_type)
-{
-
+  get_and_show_response(servdata, socket, 0);
 }
 
 void

@@ -26,31 +26,26 @@ admin_read_handler(struct selector_key * key)
   }
 
   deserialize_msg(buffer, msg);
-  printf("deserialized tipo %d\n\n", msg->type);
   switch(msg->type) {
     case SEND_CRED:
-      printf("Recieved credential\n");
       check_credentials(msg->buffer, msg->buffer_size);
       break;
     case LIST_METRICS:
-      printf("Recieved list metrics\n");
       send_list_metrics();
       break;
     case LIST_CONFIGS:
-      printf("Recieved list configs\n");
       send_list_configs();
       break;
     case GET_METRIC:
-      printf("Recieved get metric\n");
       send_metric(msg->param);
       break;
     case GET_CONFIG:
-      printf("Recieved get config\n");
       send_config(msg->param);
       break;
     case SET_CONFIG:
-      printf("Recieved set config\n");
       check_set_config(msg->param, msg->buffer, msg->buffer_size);
+      break;
+    default:
       break;
   }
 }
@@ -69,13 +64,12 @@ admin_write_handler(struct selector_key * key) {
   msg = q_poll();
   pointer = serialize_msg(buffer, msg);
 
-  sctp_sendmsg(key->fd, buffer, pointer - buffer,
+  sent_bytes = sctp_sendmsg(key->fd, buffer, pointer - buffer,
      admin_data->addr, admin_data->len,
       admin_data->sri.sinfo_ppid, admin_data->sri.sinfo_flags,
        admin_data->sri.sinfo_stream, 0, 0);
   if(sent_bytes <= 0) {
     printf("%s\n",strerror(errno));
   }
-  printf("mensaje de tipo %d enviado\n", msg->type);
 
 }

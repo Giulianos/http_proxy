@@ -15,9 +15,9 @@
 unsigned char *
 serialize_int(unsigned char * buffer, unsigned int value);
 unsigned char *
-serialize_char(unsigned char * buffer, char value);
+serialize_char(unsigned char * buffer, unsigned char value);
 unsigned char *
-serialize_string(unsigned char * buffer, char * str);
+serialize_string(unsigned char * buffer, unsigned char * str);
 unsigned char *
 serialize_msg(unsigned char * buffer, msg_t * msg);
 
@@ -31,11 +31,11 @@ serialize_msg(unsigned char * buffer, msg_t * msg);
  */
 
 unsigned char *
-deserialize_int(unsigned char * buffer, int * value);
+deserialize_int(unsigned char * buffer, unsigned int * value);
 unsigned char *
-deserialize_char(unsigned char * buffer, char * value);
+deserialize_char(unsigned char * buffer, unsigned char * value);
 unsigned char *
-deserialize_string(unsigned char * buffer, char * str);
+deserialize_string(unsigned char * buffer, unsigned char * str);
 unsigned char *
 deserialize_msg(unsigned char * buffer, msg_t * msg);
 
