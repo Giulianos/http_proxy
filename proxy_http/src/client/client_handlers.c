@@ -50,12 +50,11 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
-#ifdef DUMMY_PARSERS
-        request_parser_parse(client->request_parser);
-#endif
         client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                   &client->post_req_parse_buf, client_set_host, client); //TODO: checks buffers
         while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
+      //    client->state= (client_state_t) client->req_data.state;
+
 
 
       } else {
@@ -71,13 +70,13 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
-#ifdef DUMMY_PARSERS
-        request_parser_parse(client->request_parser);
-#endif
         client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                 &client->post_req_parse_buf, client_set_host, client);
+          while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
+          client->state= (client_state_t) client->req_data.state;
 
-        /** As i wrote to the buffer, write to origin */
+
+          /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
       } else {
         /** If buffer is full, stop reading from client */

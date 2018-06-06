@@ -53,6 +53,7 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 
 	rData->hostCallback = hostCallback;
 	rData->callbackData=callbackData;
+    rData->version=V_1_1;//TODO fix groncho
 
 	success = checkRequestInner(rData, bIn, bOut);
 
@@ -99,7 +100,9 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
 				} else if (aux) { // Ya encontré el host.
-					rData->parserState = FINISHED;
+                    rData->hostCallback(rData->host, rData->port, rData->callbackData);
+
+                    rData->parserState = FINISHED;
 				} else {
 					rData->parserState = SPACE_TRANSITION;
 					rData->next = VERSION;
