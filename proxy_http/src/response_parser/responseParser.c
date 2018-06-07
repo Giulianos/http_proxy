@@ -272,7 +272,8 @@ extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 isValidStatus (const int status) {
-	return status == STATUS_OK || status == STATUS_NO_CONTENT;
+	return true; //TODO mfallone fijar
+    //return status == STATUS_OK || status == STATUS_NO_CONTENT;
 }
 
 /**               FIN DE FUNCIONES DE START LINE                **/
@@ -393,7 +394,8 @@ checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
-	while ((c = buffer_peek(bIn)) != 0 && c != '\r') {
+	char c;
+    while ((c = buffer_peek(bIn)) != 0 && c != '\r') {
 		buffer_read(bIn);
 	};
 
@@ -404,7 +406,7 @@ checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 	// Todo lo que tenga atribuido al header Connection se va y se
 	// reemplaza por close.
-	writeToBuf(" close\r\n", bOut);
+	writeToBuf(" close", bOut);
 	rData->isClose = true;
 	return true;
 }

@@ -41,7 +41,7 @@ client_read(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
   switch(client->state) {
-    case NO_ORIGIN:
+    case NO_ORIGIN: //solo entra aca
       if(buffer_can_write(&client->pre_req_parse_buf)) {
         /** Get the buffer pointer and space available */
         size_t buffer_space;
@@ -50,10 +50,17 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
-        client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
-                                                  &client->post_req_parse_buf, client_set_host, client); //TODO: checks buffers
+        if(client->req_data.parserState!=FINISHED)
+          client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
+                                                  &client->post_req_parse_buf, client_set_host, client);
+        if(client->req_data.state!=OK){
+          selector_unregister_fd(client->selector,client->client_fd);
+          printf("COMANDO INVALIDO----\n");
+          return; //cosas sin sentido
+        }
         while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
-      //    client->state= (client_state_t) client->req_data.state;
+
+        //    client->state= (client_state_t) client->req_data.state;
 
 
 
@@ -162,12 +169,14 @@ client_block(struct selector_key * key)
   }else if(errno==EINPROGRESS){ //si la conexion esta en proceso
       selector_status st = selector_set_interest_key(key, OP_NOOP);
       if(SELECTOR_SUCCESS != st) {
-          exit(42);//TODO explota fuerte
+        printf("Fail to register in select");
+        exit(13);
       }
 
-      st = selector_register(key->s, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
+      st = selector_register(key->s, client->origin_fd, &remote_handlers, OP_WRITE, (void*)client);
       if(SELECTOR_SUCCESS != st) {
-          exit(111);//TODO explota fuerte
+          printf("Fail to register in select");
+          exit(13);
       }
       printf("Connected!\n");
   }  else {

@@ -27,9 +27,11 @@ client_new(const struct client_config * config)
   client->origin_fd = -1;
   client->client_fd = config->fd;
   client->selector = config->selector;
+
   defaultRequestStruct(&client->req_data);
+  defaultResponseStruct(&client->res_data);
 
-
+    //TODO hacerlos como define
   int BUFFER_SIZE = 8192; // A pasar a .h como macro.
   int RESERVED_SPACE = 255; // En principio, tomo como espacio reservado lo máximo que puede ocupar el host.
 
@@ -61,7 +63,7 @@ client_new(const struct client_config * config)
       .out_buffer = &client->post_res_parse_buf,
       .ready_flag = &client->response_complete,
   };
-  client->response_parser = response_parser_new(&res_parser_config);
+//  client->response_parser = response_parser_new(&res_parser_config);
 
 
   return client;
@@ -80,16 +82,23 @@ client_free_resources(client_t client) {
     close(client->origin_fd);
     selector_unregister_fd(client->selector, client->origin_fd);
     client->origin_fd = -1;
-  }
 
-  /**
-   * TODO:
-   * Resources that should be freed:
-   * 1) Parsers
-   * 2) Buffers
-   * 3) Resolved host
-   * 4) Client CDT
-   */
+  }
+    shutdown(client->client_fd,SHUT_RDWR);
+    close(client->client_fd);
+    free(client->pre_req_parse_buf_mem);
+    free(client->post_req_parse_buf_mem);
+    free(client->pre_res_parse_buf_mem);
+    free(client->post_res_parse_buf_mem);
+
+    /**
+     * TODO:
+     * Resources that should be freed:
+     * 1) Parsers
+     * 2) Buffers
+     * 3) Resolved host
+     * 4) Client CDT
+     */
 
 }
 

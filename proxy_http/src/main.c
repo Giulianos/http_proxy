@@ -120,7 +120,7 @@ main(const int argc, const char * argv[])
         if(ss != SELECTOR_SUCCESS) {
             err_msg = "serving";
             /** exit with error */
-            return 1;
+            return 2;
         }
     }
 
@@ -145,7 +145,7 @@ listen_read_handler(struct selector_key *key)
     if(client_socket == -1) {
         /** return with error */
         close(client_socket);
-        return;
+        return 22;
     }
 
     /** Create a client and add it to the selector */

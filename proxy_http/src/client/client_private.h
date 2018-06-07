@@ -8,6 +8,7 @@
 #include <requestParser/requestParser.h>
 #include <selector/selector.h>
 #include <client/client.h>
+#include <responseParser/responseParser.h>
 
 #define GET_CLIENT(key) (client_t)((key)->data)
 
@@ -52,6 +53,7 @@ struct client_cdt {
 
     //requestdata
     RequestData req_data;
+    ResponseData res_data;
 
     struct log* log;
 #ifdef DUMMY_PARSERS

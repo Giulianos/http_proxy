@@ -53,17 +53,9 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 
 	rData->hostCallback = hostCallback;
 	rData->callbackData=callbackData;
-    rData->version=V_1_1;//TODO fix groncho
+    rData->version=V_1_1;//TODO parche groncho mfallone
 
 	success = checkRequestInner(rData, bIn, bOut);
-
-//	if (success == false) {
-//		*state = (rData.state == OK ?
-//			GENERAL_ERROR : rData.state);
-//    if (success == false && !rData.isBufferEmpty) { //TODO: mfallone chekear
-//        *state = (rData.state == OK ?
-//                  GENERAL_ERROR : rData.state);
-//	}
 
 	return success;
 }
