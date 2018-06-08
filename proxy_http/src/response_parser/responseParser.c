@@ -339,9 +339,11 @@ checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut) {
 						buffer_read(bIn);
 						rData->next = RES_FINISHED;
 						if (!rData->isChunked && rData->withTransf) { // El body va a salir en chunks después de transformación.
+							/** TODO: Se debe chequear si hay espacio en el buffer antes de escribir */
 							writeToBuf("Transfer-Encoding: chunked\r\n", bOut);
 						}
 						if (!rData->isClose) { // Todavía no está el header de Connection: close.
+							/** TODO: Se debe chequear si hay espacio en el buffer antes de escribir */
 							writeToBuf("Connection: close\r\n", bOut);
 						}
 						writeToBuf("\r\n", bOut);

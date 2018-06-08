@@ -1,4 +1,5 @@
 # Subdirectories
+add_subdirectory(transformations)
 add_subdirectory(response_parser)
 add_subdirectory(request_parser)
 add_subdirectory(buffer)
@@ -14,6 +15,7 @@ add_executable(proxy_http main.c)
 set_target_properties(proxy_http PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 
 # Libraries
+target_link_libraries(proxy_http Transformations)
 target_link_libraries(proxy_http ResponseParser)
 target_link_libraries(proxy_http RequestParser)
 target_link_libraries(proxy_http Buffer)
@@ -30,11 +32,13 @@ add_executable(bufferTest tests/bufferTest.c)
 add_executable(myParserUtilsTest tests/myParserUtilsTest.c)
 add_executable(requestParserTest tests/requestParserTest.c)
 add_executable(responseParserTest tests/responseParserTest.c)
+add_executable(transformations_test tests/transformation_test.c)
 
 set_target_properties(bufferTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 set_target_properties(myParserUtilsTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 set_target_properties(requestParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 set_target_properties(responseParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
+set_target_properties(transformations_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 
 # Tests Libraries
 target_link_libraries(bufferTest Buffer)
@@ -49,3 +53,5 @@ target_link_libraries(requestParserTest RequestParser)
 target_link_libraries(responseParserTest Buffer)
 target_link_libraries(responseParserTest MyParserUtils)
 target_link_libraries(responseParserTest ResponseParser)
+
+target_link_libraries(transformations_test Transformations)
