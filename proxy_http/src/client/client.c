@@ -12,6 +12,9 @@
 #include "remote_handlers.h"
 #include "client_private.h"
 
+static void *
+request_resolv_blocking(void *data);
+
 client_t
 client_new(const struct client_config * config)
 {
@@ -23,10 +26,12 @@ client_new(const struct client_config * config)
 
   client->state = NO_ORIGIN;
   client->host.fqdn[0] = '\0';
+  client->host.resolved = NULL;
   client->err = NO_ERROR;
   client->origin_fd = -1;
   client->client_fd = config->fd;
   client->selector = config->selector;
+
 
   defaultRequestStruct(&client->req_data);
   defaultResponseStruct(&client->res_data);
@@ -58,11 +63,11 @@ client_new(const struct client_config * config)
 #endif
 
   /** Initialize response parser */
-  struct response_parser_config res_parser_config = {
-      .in_buffer = &client->pre_res_parse_buf,
-      .out_buffer = &client->post_res_parse_buf,
-      .ready_flag = &client->response_complete,
-  };
+//  struct response_parser_config res_parser_config = {
+//      .in_buffer = &client->pre_res_parse_buf,
+//      .out_buffer = &client->post_res_parse_buf,
+//      .ready_flag = &client->response_complete,
+//  };
 //  client->response_parser = response_parser_new(&res_parser_config);
 
 
@@ -84,7 +89,7 @@ client_free_resources(client_t client) {
     client->origin_fd = -1;
 
   }
-    shutdown(client->client_fd,SHUT_RDWR);
+//    shutdown(client->client_fd,SHUT_RDWR);
     close(client->client_fd);
     free(client->pre_req_parse_buf_mem);
     free(client->post_req_parse_buf_mem);
@@ -117,10 +122,11 @@ client_set_host(const char * host, int port, void * data)
 
   client_t client = (client_t)data;
   pthread_t host_resolv_thread;
+  log_sendf(client->log,"Resolving: %s...",host);
 
   /** In case of a keep-alive connection, check if host remains the same */
   if(client->host.fqdn[0] != '\0'){
-    if(strncmp(host, client->host.fqdn, MAX_DOMAIN_NAME_LENGTH) != 0 || client->host.port != port) {
+    if(strncmp(host, client->host.fqdn, MAX_DOMAIN_NAME_LENGTH) != 0 || client->host.port !=(unsigned) port) {
       client->err = KEEPALIVE_HOST_NO_MATCH;
       client->state = ERROR;
       return;

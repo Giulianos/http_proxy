@@ -21,13 +21,14 @@ struct log{
     pthread_t logthread;
     buffer logbuf;
     void * log_buf_mem;
+    fd_selector selector;
 };
 
 void log_close(struct selector_key * key);
 void log_write(struct selector_key * key);
 
 
-int log_start(struct log* l);
+int log_start(struct log* l,fd_selector sel);
 
 void log_send(struct log* l,char *s);
 void log_sendf(struct log* l,const char *fmt, ...);

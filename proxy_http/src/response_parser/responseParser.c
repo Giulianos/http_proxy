@@ -9,8 +9,8 @@ static bool
 extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut);
-//static bool
-//isValidStatus (const int status);
+static bool
+isValidStatus (const int status);
 // Prototipos Header
 static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -80,7 +80,7 @@ static bool
 checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success = true;
 	bool active = true;
-
+	
 	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 
 	while (success && active) {
@@ -232,8 +232,7 @@ checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 /**               COMIENZO FUNCIONES DE START LINE              **/
 
-static bool
-extractHttpVersion
+static bool extractHttpVersion
 (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
@@ -263,18 +262,19 @@ extractHttpVersion
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (getNumber(&(rData->status), bIn, bOut, "", &(rData->isBufferEmpty))) {
-		//if (isValidStatus(rData->status)) {
+		if (isValidStatus(rData->status)) {
 			return true;
-		//}
+		}
 	}
 
 	return false; // Puede que salga porque el buffer está vacío o porque encontré algo distinto de un número.
 }
 
-/**static bool
+static bool
 isValidStatus (const int status) {
-    return status == STATUS_OK || status == STATUS_NO_CONTENT;
-}*/
+	return true; //TODO mfallone fijar
+    //return status == STATUS_OK || status == STATUS_NO_CONTENT;
+}
 
 /**               FIN DE FUNCIONES DE START LINE                **/
 
@@ -424,6 +424,12 @@ checkType (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
+	/** el caso que no sea un 200 y no tenga body */
+	if(!rData->isChunked && rData->bodyLength<0 && rData->status!=200){
+        rData->isBufferEmpty = true;
+        rData->parserState=RES_FINISHED;
+		return false;
+	}
 	// Chunked encoding sobreescribe content length.
 	if (rData->isChunked) {
 		return extractChunkedBody(rData, bIn, bOut);

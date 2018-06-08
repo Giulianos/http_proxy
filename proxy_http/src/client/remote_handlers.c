@@ -21,9 +21,8 @@ remote_read(struct selector_key * key)
         ssize_t read_bytes = read(client->origin_fd, buffer_ptr, buffer_space);
         if(read_bytes<0) {
             printf("Read failed! closing!!!!\n");
-            selector_set_interest(client->client_fd, client->client_fd, OP_WRITE);
+            selector_set_interest(client->selector, client->client_fd, OP_WRITE);
             selector_unregister_fd(client->selector,client->origin_fd);
-            //selector_unregister_fd(client->selector,client->client_fd);
         } else if(read_bytes>0){
           printf("Remote read: reading\n");
 
@@ -31,13 +30,14 @@ remote_read(struct selector_key * key)
           /** Parse the response. The parser dumps pre_res_parse_buf into post_res_parse_buf */
 //        response_parser_parse(client->response_parser);
           checkResponse(&client->res_data,&client->pre_res_parse_buf,&client->post_res_parse_buf,&client->post_res_parse_buf);
-          //TODO check si tira un header coherente
-          if(client->res_data.state!=RES_OK && client->res_data.state!=OK){
-              printf("RESPONSEPARSER EXPLODED %d",client->state);
+          if(client->res_data.state!=RES_OK){ //TODO remove
+              printf("Response parser exploded\n");
+              exit(42);
           }
-          if(client->res_data.parserState==FINISHED){
-            selector_set_interest(client->client_fd, client->client_fd, OP_WRITE);
-            selector_unregister_fd(client->selector,client->origin_fd);
+          if(client->res_data.parserState==RES_FINISHED){
+            printf("remote FINISHED\n");
+              selector_unregister_fd(client->selector,client->origin_fd);
+              selector_set_interest(client->selector, client->client_fd, OP_WRITE);
             return;
           }
           /** As i wrote to the buffer, write to the client */
@@ -50,6 +50,8 @@ remote_read(struct selector_key * key)
         selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
       }
       break;
+      default: //dummy
+          break;
   }
 
 }
@@ -62,15 +64,17 @@ remote_write(struct selector_key * key)
   switch(client->state) {
     case SEND_REQ:
       if(buffer_can_read(&client->post_req_parse_buf)) {
-
         printf("Sending request..\n");
         size_t buffer_size;
         uint8_t * buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
         ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
+         /** If the read fails, close the connection */
         if(written_bytes==-1) {
-          printf("Write failed! (%s)\n", strerror(errno));
-          exit(43); //TODO ARREGLARd
-         }
+          printf("Remote write failed! (%s)\n", strerror(errno));
+          selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+          selector_unregister_fd(client->selector,client->origin_fd);
+          return;
+        }
 
 
         buffer_read_adv(&client->post_req_parse_buf, written_bytes);
@@ -86,6 +90,8 @@ remote_write(struct selector_key * key)
         selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
       }
       break;
+  default: //dummy
+          break;
   }
 }
 
@@ -101,7 +107,8 @@ void
 remote_close(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
+//  shutdown(client->origin_fd,SHUT_RDWR);
+  close(client->origin_fd);
   client->origin_fd=-1;
-//  selector_unregister_fd(key->s, key->fd);
-  client->state = NO_ORIGIN;
+//  client->state = NO_ORIGIN;
 }

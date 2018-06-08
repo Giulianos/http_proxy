@@ -46,22 +46,24 @@ client_read(struct selector_key * key)
         /** Get the buffer pointer and space available */
         size_t buffer_space;
         uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
-
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
+        /** If the read fails, close the connection */
+        if(read_bytes==-1){
+              selector_unregister_fd(client->selector,client->client_fd);
+        }
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
         if(client->req_data.parserState!=FINISHED)
           client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                   &client->post_req_parse_buf, client_set_host, client);
         if(client->req_data.state!=OK){
+        /** if the parser fails, close the connection */
           selector_unregister_fd(client->selector,client->client_fd);
-          printf("COMANDO INVALIDO----\n");
-          return; //cosas sin sentido
+          printf("Invalid request by client\n");
+          return;
         }
-        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
-
-        //    client->state= (client_state_t) client->req_data.state;
-
+        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO mfallone must fix
+          //TODO check de 0x00 value
 
 
       } else {
@@ -69,6 +71,7 @@ client_read(struct selector_key * key)
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
       }
       break;
+
     case SEND_REQ:
       if(buffer_can_write(&client->pre_req_parse_buf)) {
         /** Get the buffer pointer and space available */
@@ -79,8 +82,9 @@ client_read(struct selector_key * key)
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
         client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                 &client->post_req_parse_buf, client_set_host, client);
-          while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO parche groncho
-          client->state= (client_state_t) client->req_data.state;
+        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO mfallone must fix
+          //TODO check de 0x00 value
+        client->state= (client_state_t) client->req_data.state;
 
 
           /** As i wrote to the buffer, write to origin */
@@ -90,28 +94,39 @@ client_read(struct selector_key * key)
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
       }
       break;
+      default: //dummy
+          break;
   }
 }
 
 void
 client_write(struct selector_key * key) {
   client_t client = GET_CLIENT(key);
-
   switch(client->state) {
     case READ_RESP:
       if(buffer_can_read(&client->post_res_parse_buf)) {
-        printf("Sending response...\n");
         size_t buffer_size;
         uint8_t * buffer_ptr = buffer_read_ptr(&client->post_res_parse_buf, &buffer_size);
-        ssize_t written_bytes = write(client->client_fd, buffer_ptr, buffer_size);
+          printf("Sending response (size %d)...\n", (int) buffer_size);
+          ssize_t written_bytes = write(client->client_fd, buffer_ptr, buffer_size);
+          if(written_bytes==-1){
+              selector_unregister_fd(client->selector,client->client_fd);
+              return;
+          }
         buffer_read_adv(&client->post_res_parse_buf, written_bytes);
         /** As i read from the buffer, read from the origin */
         selector_set_interest(client->selector, client->origin_fd, OP_READ);
-      } else if(client->response_complete) {
-        /** If the response is complete, keep-alive! */
-        client_restart_state(client);
+//      } else if(client->response_complete) {
+//        /** If the response is complete, keep-alive! */
+//        client_restart_state(client);
+      }else if((client->origin_fd==-1)){ /** when the buffer is empty and the remote connection is closed */
+              printf("client FINISHED\n");
+              selector_unregister_fd(client->selector,client->client_fd);
+              return;
       }
       break;
+    default: //dummy
+          break;
   }
 
 }
@@ -124,11 +139,15 @@ client_block(struct selector_key * key)
   int status;
   int origin_socket;
 
-  struct addrinfo * current = res;
-  char addr_str[50];
+//  struct addrinfo * current = res;
+//  char addr_str[50];
 
   /** Connect to remote host */
-
+    if(res== NULL){
+        printf("I cant resolve this domain %s\n",client->host.fqdn);
+        selector_unregister_fd(client->selector,client->client_fd);
+        return;
+    }
   origin_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (origin_socket < 0) {
     client->state = ERROR;
@@ -158,7 +177,6 @@ client_block(struct selector_key * key)
   } else if(res->ai_family == AF_INET6) {
     ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(client->host.port);
   }
-
 
   /** Non-blocking connect */
 

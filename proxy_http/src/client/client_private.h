@@ -84,7 +84,6 @@ client_terminate(client_t client);
 void
 client_set_host(const char * host, int port, void * data);
 
-static void *
-request_resolv_blocking(void *data);
+
 
 #endif
