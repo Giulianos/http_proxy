@@ -113,7 +113,7 @@ send_config(unsigned char config)
     send_error(UNEXPECTED_ERROR);
     return;
   }
-  value_len = strnlen(value, 7);
+  value_len = strlen(value);
 
 
   /** buffer = "(" + config_num(unsigned int) + ")" + name + ": " + value + "\0" */
