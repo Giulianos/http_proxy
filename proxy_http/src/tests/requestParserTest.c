@@ -35,10 +35,13 @@ static void
 insertToBuffer (RequestData *rData, char *text, buffer *b, buffer *bOut);
 static void
 resetData (RequestData *rData, buffer *b, buffer *bOut);
+void
+hostCallbackDummy (const char *host, int port, void *data);
 
 int
 main (int argc, char *argv[]) {
 	RequestData *rData = (RequestData *) malloc(sizeof(RequestData));
+	rData->hostCallback = &hostCallbackDummy;
 	struct buffer b;
 	uint8_t direct_buff[100];
 	int totalSpace = 100;
@@ -226,6 +229,12 @@ assertLocalHost (RequestData *rData, buffer *b, buffer *bOut) {
 	writeToBuf("HOST:\r\n", b);
 	assert(checkLocalHost(rData, b, bOut));
 	assert(rData->isLocalHost);
+
+	// La primera vez no hago nada (Primera pasada dell loop).
+	insertToBuffer(rData, "GET / HTTP/1.1\r\nHost: localhost:8080\r", b, bOut);
+	assert(checkRequestInner(rData, b, bOut));
+	assert(strcmp("localhost", rData->host) == 0);
+	assert(rData->port == 8080);
 }
 
 static void
@@ -365,6 +374,11 @@ assertIncompleteRequestWithUriHostByByte (RequestData *rData, buffer *b, buffer 
 		assert(msg[i] == buffer_read(bOut));
 	}
 	assert(!buffer_can_read(bOut));
+}
+
+void
+hostCallbackDummy (const char *host, int port, void *data) {
+	return;
 }
 
 static void

@@ -135,8 +135,8 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case LOCALHOST_HEADER_CHECK:
-				if (checkLocalHost(rData, bIn, bOut)) { // Ya encontré el host.
-					rData->hostCallback(rData->host, rData->port, rData->callbackData);
+				if (checkLocalHost(rData, bIn, bOut)) { // Encontré el header de loop por localhost.
+					rData->hostCallback("localhost", rData->port, rData->callbackData);
 					rData->parserState = FINISHED;
 				} else if (rData->isBufferEmpty) {
 					success = false;
