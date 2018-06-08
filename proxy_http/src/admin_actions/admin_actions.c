@@ -1,4 +1,4 @@
-#include "actions.h"
+#include <admin_actions/admin_actions.h>
 #include <config/config.h>
 #include <metric/metric.h>
 #include <string.h>
@@ -106,14 +106,15 @@ send_config(unsigned char config)
     send_error(CONFIG_NOT_FOUND);
     return;
   }
-  value = config_get_from_index(config);
   name_len = strlen(name);
-  value_len = strlen(value);
 
+  value = config_get_from_index(config);
   if(value == NULL) {
     send_error(UNEXPECTED_ERROR);
     return;
   }
+  value_len = strnlen(value, 7);
+
 
   /** buffer = "(" + config_num(unsigned int) + ")" + name + ": " + value + "\0" */
   msg = malloc(sizeof(msg_t));

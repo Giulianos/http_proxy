@@ -128,7 +128,7 @@ client_set_host(const char * host, int port, void * data)
   if(client->host.fqdn[0] != '\0'){
     if(strncmp(host, client->host.fqdn, MAX_DOMAIN_NAME_LENGTH) != 0 || client->host.port !=(unsigned) port) {
       client->err = KEEPALIVE_HOST_NO_MATCH;
-      client->state = ERROR;
+      client->state = CLI_ERROR;
       return;
     } else {
       /** We are already connected, so we skip to send the request */
@@ -148,7 +148,7 @@ client_set_host(const char * host, int port, void * data)
   }
 
   client->err = INVALID_HOST;
-  client->state = ERROR;
+  client->state = CLI_ERROR;
   return;
 }
 

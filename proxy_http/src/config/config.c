@@ -1,10 +1,11 @@
-#include "config.h"
+#include <config/config.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 
 #define MAX_NAME 10
+#define MAX_VALUE 1024
 #define MAX_CONFIG 100
 
 #define PREALLOC_QUANTITY 10
@@ -19,15 +20,15 @@ static struct config configurations[MAX_CONFIG];
 static int config_size = 0;
 
 int
-config_set(const char *name, const char *value)
+config_create(const char * name, const char * value)
 {
   int i = 0;
 
-  for(i; i < config_size; i++) {
+  for(; i < config_size; i++) {
     if(strncmp(name, configurations[i].name, MAX_NAME) == 0) {
-      configurations[i].value = realloc(configurations[i].value, strlen(value));
+      configurations[i].value = realloc(configurations[i].value, strlen(value)+1);
 
-      strncpy(configurations[i].value, value, strlen(value)+1);
+      strncpy(configurations[i].value, value, strlen(value));
       return 0;
     }
   }
@@ -37,25 +38,55 @@ config_set(const char *name, const char *value)
     return -1;
 
   strncpy(configurations[config_size].name, name, MAX_NAME);
-  configurations[i].value = malloc(strlen(value));
-  strncpy(configurations[i].value, value, strlen(value)+1);
+  configurations[i].value = malloc(strlen(value)+1);
+  strncpy(configurations[i].value, value, strlen(value));
 
   config_size++;
   return 0;
 }
 
+int
+config_set_from_index(int index, char * value)
+{
+  if(index >= config_size)
+    return -1;
+  configurations[index].value = value;
+  return 0;
+}
 
 char *
 config_get(const char *name)
 {
   int i = 0;
 
-  for(i; i < config_size; i++) {
+  for(; i < config_size; i++) {
     if(strncmp(name, configurations[i].name, MAX_NAME) == 0)
       return configurations[i].value;
   }
 
   return NULL;
+}
+
+char *
+config_get_from_index(int index)
+{
+  if(index >= config_size)
+    return NULL;
+  return configurations[index].value;
+}
+
+char *
+config_get_name(unsigned char number)
+{
+  if(number >= config_size)
+    return NULL;
+  return configurations[number].name;
+}
+
+int
+config_get_size()
+{
+  return config_size;
 }
 
 int
@@ -116,7 +147,7 @@ config_initialization(const char * file_name)
             value_buf = realloc(value_buf, current + PREALLOC_QUANTITY);
           }
           value_buf[current] = '\0';
-          config_set(name_buf,value_buf);
+          config_create(name_buf,value_buf);
           current = 0;
           free(value_buf);
           value_buf = NULL;
@@ -132,7 +163,7 @@ config_initialization(const char * file_name)
       value_buf = realloc(value_buf, current + PREALLOC_QUANTITY);
     }
     value_buf[current] = '\0';
-    config_set(name_buf,value_buf);
+    config_create(name_buf,value_buf);
     free(value_buf);
   }
   return 0;

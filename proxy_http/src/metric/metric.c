@@ -1,4 +1,4 @@
-#include "metric.h"
+#include <metric/metric.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,7 +21,7 @@ metric_create(const char * name, const char * value)
 {
   int i = 0;
 
-  for(i; i < metric_size; i++) {
+  for(; i < metric_size; i++) {
     if(strncmp(name, metrics[i].name, MAX_NAME) == 0) {
       metrics[i].value = realloc(metrics[i].value, strlen(value));
 
@@ -47,7 +47,7 @@ metric_get(const char *name)
 {
   int i = 0;
 
-  for(i; i < metric_size; i++) {
+  for(; i < metric_size; i++) {
     if(strncmp(name, metrics[i].name, MAX_NAME) == 0)
       return metrics[i].value;
   }

@@ -15,14 +15,14 @@ serialize_int(unsigned char * buffer, int value)
 }
 
 unsigned char *
-serialize_char(unsigned char * buffer, char value)
+serialize_char(unsigned char * buffer, unsigned char value)
 {
   buffer[0] = value;
   return buffer + 1;
 }
 
 unsigned char *
-serialize_string(unsigned char * buffer, char * str)
+serialize_string(unsigned char * buffer, unsigned char * str)
 {
   do {
     buffer = serialize_char(buffer, *str);
@@ -81,8 +81,6 @@ deserialize_string(unsigned char * buffer, unsigned char * str)
 unsigned char *
 deserialize_msg(unsigned char * buffer, msg_t * msg)
 {
-  unsigned char * start = buffer;
-
   /** deserialization of type */
   buffer = deserialize_char(buffer, &msg->type);
   /** param deserialization */

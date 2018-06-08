@@ -3,8 +3,8 @@
 #include <messages/messages.h>
 #include <msg_queue/msg_queue.h>
 #include <serializer/serializer.h>
-#include <actions/actions.h>
-#include "handlers.h"
+#include <admin_actions/admin_actions.h>
+#include <admin_handlers/admin_handlers.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>

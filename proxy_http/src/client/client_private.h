@@ -17,7 +17,7 @@ enum client_state {
   NO_ORIGIN,
   SEND_REQ,
   READ_RESP,
-  ERROR,
+  CLI_ERROR,
 };
 
 typedef enum client_state client_state_t;

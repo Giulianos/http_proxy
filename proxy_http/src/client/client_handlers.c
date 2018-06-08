@@ -150,7 +150,7 @@ client_block(struct selector_key * key)
     }
   origin_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (origin_socket < 0) {
-    client->state = ERROR;
+    client->state = CLI_ERROR;
     return;
   }
 
