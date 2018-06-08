@@ -14,6 +14,8 @@ static void
 assertCompactLimit (buffer *b);
 static void
 assertPeek (buffer *b);
+static void
+assertPeek2 (buffer *b);
 
 // Tests para las funcionalidades agregadas al buffer de Juan.
 int
@@ -29,6 +31,8 @@ main (int argc, char *argv[]) {
 	assertCompactLimit(&b);
 	buffer_reset(&b);
 	assertPeek(&b);
+	buffer_reset(&b);
+	assertPeek2(&b);
 
 	return 0;
 }
@@ -217,4 +221,48 @@ assertPeek (buffer *b) {
 	//            ↑               ↑
 	//            infLimit=2      limit=6
 	assert(buffer_read(b) == 0);
+}
+
+static void
+assertPeek2 (buffer *b) {
+	//            R=2/W=2
+	//            ↓
+	//    +---+---+---+---+---+---+
+	//    |   |   |   |   |   |   |
+	//    +---+---+---+---+---+---+
+	//            ↑               ↑
+	//            infLimit=2      limit=6
+	buffer_write(b, 0);
+	//            R=2 W=3
+	//            ↓   ↓
+	//    +---+---+---+---+---+---+
+	//    |   |   | 0 |   |   |   |
+	//    +---+---+---+---+---+---+
+	//            ↑               ↑
+	//            infLimit=2      limit=6
+	buffer_write(b, 'H');
+	//            R=2     W=4
+	//            ↓       ↓
+	//    +---+---+---+---+---+---+
+	//    |   |   | 0 | H |   |   |
+	//    +---+---+---+---+---+---+
+	//            ↑               ↑
+	//            infLimit=2      limit=6
+	assert(buffer_peek(b) == 0);
+	//            R=2     W=4
+	//            ↓       ↓
+	//    +---+---+---+---+---+---+
+	//    |   |   | 0 | H |   |   |
+	//    +---+---+---+---+---+---+
+	//            ↑               ↑
+	//            infLimit=2      limit=6
+	assert(buffer_read(b) == 0);
+	//                R=3 W=4
+	//                ↓   ↓
+	//    +---+---+---+---+---+---+
+	//    |   |   | 0 | H |   |   |
+	//    +---+---+---+---+---+---+
+	//            ↑               ↑
+	//            infLimit=2      limit=6
+	assert(buffer_peek(b) == 'H');
 }

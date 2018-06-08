@@ -28,6 +28,10 @@ typedef enum {
 uint8_t
 readAndWrite (buffer *b, buffer *bOut);
 
+/** Como readAndWrite pero acepta el valor 0. Útil para cuando leo el body. */
+uint8_t
+readAndWriteWithZero (buffer *b, buffer *bOut, bool *bEmpty);
+
 /** Leo todos los siguientes espacios y tabs de b. */
 uint8_t
 moveThroughSpaces (buffer *b);
@@ -60,6 +64,10 @@ writeHexToBufReverse (int number, buffer *b);
 */
 bool
 writeToTransfBuf (buffer *b, buffer *bOut, int *quantity);
+
+/** Como writeToTransfBuf pero acepta el valor 0. Útil para cuando leo el body. */
+bool
+writeToTransfBufWithZero (buffer *b, buffer *bOut, int *quantity, bool *bEmpty);
 
 /** Como writeToBufReverse pero sin especificar la cantidad de elementos. */
 void

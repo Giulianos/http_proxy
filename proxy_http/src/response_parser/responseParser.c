@@ -9,8 +9,8 @@ static bool
 extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool
-isValidStatus (const int status);
+//static bool
+//isValidStatus (const int status);
 // Prototipos Header
 static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -80,7 +80,7 @@ static bool
 checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success = true;
 	bool active = true;
-	
+
 	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 
 	while (success && active) {
@@ -124,35 +124,35 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				}
 				break;
 			case LENGTH_CHECK:
-				if (!checkLength(rData, bIn, bOut)) {
+				if (!checkLength(rData, bIn, bOut) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case ENCODING_CHECK:
-				if (!checkEncoding(rData, bIn, bOut)) {
+				if (!checkEncoding(rData, bIn, bOut) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case CHUNKED_CHECK:
-				if (!checkChunked(rData, bIn, bOut)) {
+				if (!checkChunked(rData, bIn, bOut) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case CONNECTION_CHECK:
-				if (!checkConnection(rData, bIn, bOut)) {
+				if (!checkConnection(rData, bIn, bOut) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
 				}
 				break;
 			case TYPE_CHECK:
-				if (!checkType(rData, bIn, bOut)) {
+				if (!checkType(rData, bIn, bOut) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
@@ -232,7 +232,8 @@ checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 /**               COMIENZO FUNCIONES DE START LINE              **/
 
-static bool extractHttpVersion
+static bool
+extractHttpVersion
 (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char versionOption[] = {'0', '1'};
 	httpVersion versionType[] = {V_1_0, V_1_1};
@@ -262,19 +263,18 @@ static bool extractHttpVersion
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (getNumber(&(rData->status), bIn, bOut, "", &(rData->isBufferEmpty))) {
-		if (isValidStatus(rData->status)) {
+		//if (isValidStatus(rData->status)) {
 			return true;
-		}
+		//}
 	}
 
 	return false; // Puede que salga porque el buffer está vacío o porque encontré algo distinto de un número.
 }
 
-static bool
+/**static bool
 isValidStatus (const int status) {
-	return true; //TODO mfallone fijar
-    //return status == STATUS_OK || status == STATUS_NO_CONTENT;
-}
+    return status == STATUS_OK || status == STATUS_NO_CONTENT;
+}*/
 
 /**               FIN DE FUNCIONES DE START LINE                **/
 
@@ -395,7 +395,8 @@ checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut) {
 static bool
 checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	char c;
-    while ((c = buffer_peek(bIn)) != 0 && c != '\r') {
+
+	while ((c = buffer_peek(bIn)) != 0 && c != '\r') {
 		buffer_read(bIn);
 	};
 
@@ -406,7 +407,7 @@ checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 	// Todo lo que tenga atribuido al header Connection se va y se
 	// reemplaza por close.
-	writeToBuf(" close", bOut);
+	writeToBuf("close", bOut);
 	rData->isClose = true;
 	return true;
 }
@@ -428,19 +429,15 @@ extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 		return extractChunkedBody(rData, bIn, bOut);
 	}
 	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
-		if (!writeToTransfBuf(bIn, bOut, &(rData->bodyLength))) {
-			if (rData->bodyLength > 0) {
-				rData->isBufferEmpty = true;
-			}
+		if (!writeToTransfBufWithZero(bIn, bOut, &(rData->bodyLength), &(rData->isBufferEmpty))) {
 			return false;
 		}
 		return true;
 	}
 
 	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
-		readAndWrite(bIn, bOut);
+		readAndWriteWithZero(bIn, bOut, &(rData->isBufferEmpty));
 	}
-	rData->isBufferEmpty = false;
 	return false;
 }
 
@@ -463,10 +460,9 @@ extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 			return false;
 		}
 
-		if (!writeToTransfBuf(bIn, bOut, &(rData->bodyLength))) {
+		if (!writeToTransfBufWithZero(bIn, bOut, &(rData->bodyLength), &(rData->isBufferEmpty))) {
 			// si lectura se corta, en bodyLength me queda lo que me faltaba por leer.
 			if (rData->bodyLength > 0) {
-				rData->isBufferEmpty = true;
 				writePrefix(bIn, "\r\n");
 				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
 			}
@@ -493,19 +489,15 @@ extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
 		return extractChunkedBodyTransf(rData, bIn, bTransf);
 	}
 	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
-		if (!writeToTransfBuf(bIn, bTransf, &(rData->bodyLength))) {
-			if (rData->bodyLength > 0) {
-				rData->isBufferEmpty = true;
-			}
+		if (!writeToTransfBufWithZero(bIn, bTransf, &(rData->bodyLength), &(rData->isBufferEmpty))) {
 			return false;
 		}
 		return true;
 	}
 
 	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
-		readAndWrite(bIn, bTransf);
+		readAndWriteWithZero(bIn, bTransf, &(rData->isBufferEmpty));
 	}
-	rData->isBufferEmpty = false;
 	return false;
 }
 
@@ -528,10 +520,9 @@ extractChunkedBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
 			return false;
 		}
 
-		if (!writeToTransfBuf(bIn, bTransf, &(rData->bodyLength))) {
+		if (!writeToTransfBufWithZero(bIn, bTransf, &(rData->bodyLength), &(rData->isBufferEmpty))) {
 			// si lectura se corta, en bodyLength me queda lo que me faltaba por leer.
 			if (rData->bodyLength > 0) {
-				rData->isBufferEmpty = true;
 				writePrefix(bIn, "\r\n");
 				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
 			}

@@ -18,6 +18,25 @@ readAndWrite (buffer *b, buffer *bOut) {
 }
 
 uint8_t
+readAndWriteWithZero (buffer *b, buffer *bOut, bool *bEmpty) {
+	bool isReserved = is_reserved(b);
+	uint8_t c = 0;
+
+	if (buffer_can_read(b)) {
+		c = buffer_read(b);
+		// Si estoy leyendo algo de la zona reservada ya lo escribe al buffer
+		// de salida previamente.
+		if (!isReserved) {
+			buffer_write(bOut, c);
+		}
+	} else {
+		*bEmpty = true;
+	}
+
+	return c;
+}
+
+uint8_t
 moveThroughSpaces (buffer *b) {
 	uint8_t c;
 
@@ -64,7 +83,7 @@ writeHexToBufReverse (int number, buffer *b) {
 	}
 
 	while (number > 0) {
-		buffer_write_reverse(b, decToHexChar(number));
+		buffer_write_reverse(b, decToHexChar(number%16));
 		number = number/16;
 	}
 }
@@ -75,6 +94,22 @@ writeToTransfBuf (buffer *b, buffer *bOut, int *quantity) {
 
 	while (auxQuantity > 0) {
 		if (readAndWrite(b, bOut) == 0) {
+			break;
+		}
+		auxQuantity--;
+	}
+	*quantity = auxQuantity;
+
+	return auxQuantity <= 0;
+}
+
+bool
+writeToTransfBufWithZero (buffer *b, buffer *bOut, int *quantity, bool *bEmpty) {
+	int auxQuantity = *quantity;
+
+	while (auxQuantity > 0) {
+		readAndWriteWithZero(b, bOut, bEmpty);
+		if (*bEmpty == true) {
 			break;
 		}
 		auxQuantity--;

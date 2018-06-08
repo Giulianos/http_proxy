@@ -5,6 +5,8 @@
 static void
 assertReadAndWrite (buffer *b, buffer *bOut);
 static void
+assertReadAndWriteWithZero (buffer *b, buffer *bOut);
+static void
 assertWriteToBuffer (buffer *bOut);
 static void
 assertSpaces (buffer *b);
@@ -12,6 +14,8 @@ static void
 assertWriteToBufferReverse (buffer *b);
 static void
 assertWriteToTransfBuf (buffer *b, buffer *bOut);
+static void
+assertWriteToTransfBufWithZero (buffer *b, buffer *bOut);
 static void
 assertFormatNormal (buffer *b, buffer *bOut);
 static void
@@ -22,6 +26,8 @@ static void
 assertNumber (buffer *b, buffer *bOut);
 static void
 assertHexNumber (buffer *b, buffer *bOut);
+static void
+assertWriteHexToBufReverse (buffer *b);
 static void
 reset (buffer *b, buffer *bOut);
 
@@ -40,6 +46,9 @@ main (int argc, char *argv[]) {
 	assertReadAndWrite(&b, &bOut);
 
 	reset(&b, &bOut);
+	assertReadAndWriteWithZero(&b, &bOut);
+
+	reset(&b, &bOut);
 	assertWriteToBuffer(&bOut);
 
 	reset(&b, &bOut);
@@ -50,6 +59,9 @@ main (int argc, char *argv[]) {
 
 	reset(&b, &bOut);
 	assertWriteToTransfBuf(&b, &bOut);
+
+	reset(&b, &bOut);
+	assertWriteToTransfBufWithZero(&b, &bOut);
 
 	reset(&b, &bOut);
 	assertFormatNormal(&b, &bOut);
@@ -65,6 +77,9 @@ main (int argc, char *argv[]) {
 
 	reset(&b, &bOut);
 	assertHexNumber(&b, &bOut);
+
+	reset(&b, &bOut);
+	assertWriteHexToBufReverse(&b);
 
 	return 0;
 }
@@ -84,6 +99,27 @@ assertReadAndWrite (buffer *b, buffer *bOut) {
 	assert(readAndWrite(b, bOut) == 'O');
 	assert(buffer_read(bOut) == 'O');
 	assert(readAndWrite(b, bOut) == 'L');
+	assert(buffer_read(bOut) == 'L');
+}
+
+static void
+assertReadAndWriteWithZero (buffer *b, buffer *bOut) {
+	bool bEmpty = false;
+
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 0);
+	buffer_write_reverse(b, 0);
+	buffer_write_reverse(b, 'H');
+	buffer_write(b, 'O');
+	buffer_write(b, 0);
+	buffer_write(b, 'L');
+
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 'H'); // Elementos zona reservada
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 0);
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 'O'); // Elementos zona normal
+	assert(buffer_read(bOut) == 'O');
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 0);
+	assert(buffer_read(bOut) == 0);
+	assert(readAndWriteWithZero(b, bOut, &bEmpty) == 'L');
 	assert(buffer_read(bOut) == 'L');
 }
 
@@ -134,6 +170,27 @@ assertWriteToTransfBuf (buffer *b, buffer *bOut) {
 
 	for (int i = 0; msg[i] != 0; i++) {
 		assert(buffer_read(bOut) == msg[i]);
+	}
+	assert(buffer_read(bOut) == 0);
+}
+
+static void
+assertWriteToTransfBufWithZero (buffer *b, buffer *bOut) {
+	char *msg = "H\0la";
+	bool bEmpty = false;
+	int i, length = 4;
+
+	buffer_write(b, 'H');
+	buffer_write(b, '\0');
+	buffer_write(b, 'l');
+	buffer_write(b, 'a');
+
+	assert(writeToTransfBufWithZero(b, bOut, &length, &bEmpty));
+
+	i = 0;
+	while (buffer_can_read(bOut)) {
+		assert(buffer_read(bOut) == msg[i]);
+		i++;
 	}
 	assert(buffer_read(bOut) == 0);
 }
@@ -236,6 +293,33 @@ assertHexNumber (buffer *b, buffer *bOut) {
 	assert(getHexNumber(&number, b, bOut, "", &bEmpty));
 	// Leo 26 (1A en hexa) con el 1 por el prefix anterior.
 	assert(number == 26);
+	buffer_read(b);
+	buffer_read(b);
+
+	writeToBuf ("F ", b);
+	assert(getHexNumber(&number, b, bOut, "", &bEmpty));
+	assert(number == 15);
+}
+
+static void
+assertWriteHexToBufReverse (buffer *b) {
+	int number = 5;
+
+	assert(buffer_read(b) == 0); // Verifico que el buffer inicialmente esté vacío.
+	writeHexToBufReverse (number, b);
+	assert(buffer_read(b) == '5');
+	assert(buffer_read(b) == 0);
+
+	number = 15;
+	writeHexToBufReverse (number, b);
+	assert(buffer_read(b) == 'F');
+	assert(buffer_read(b) == 0);
+
+	number = 31;
+	writeHexToBufReverse (number, b);
+	assert(buffer_read(b) == '1');
+	assert(buffer_read(b) == 'F');
+	assert(buffer_read(b) == 0);
 }
 
 static void
