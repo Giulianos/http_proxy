@@ -2,30 +2,53 @@
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
 proxy_http/.idea/
+sctp_server/.idea/
+admin_client/.idea/
 
 # CMake
 proxy_http/cmake-build-debug/
+sctp_server/cmake-build-debug/
+admin_client/cmake-build-debug/
 
 ## File-based project format:
 proxy_http/*.iws
+sctp_server/*.iws
+admin_client/*.iws
 
 # IntelliJ
 proxy_http/out/
+sctp_server/out/
+admin_client/out/
 
 # mpeltonen/sbt-idea plugin
 proxy_http/.idea_modules/
+sctp_server/.idea_modules/
+admin_client/.idea_modules/
 
 # JIRA plugin
 proxy_http/atlassian-ide-plugin.xml
+sctp_server/atlassian-ide-plugin.xml
+admin_client/atlassian-ide-plugin.xml
 
 # Crashlytics plugin (for Android Studio and IntelliJ)
 proxy_http/com_crashlytics_export_strings.xml
+sctp_server/com_crashlytics_export_strings.xml
 proxy_http/crashlytics.properties
+sctp_server/crashlytics.properties
 proxy_http/crashlytics-build.properties
+sctp_server/crashlytics-build.properties
 proxy_http/fabric.properties
+sctp_server/fabric.properties
+
+admin_client/com_crashlytics_export_strings.xml
+admin_client/crashlytics.properties
+admin_client/crashlytics-build.properties
+admin_client/fabric.properties
 
 # CMake
 proxy_http/build/
+sctp_server/build/
+admin_client/build/
 
 ### Linux ###
 *~
