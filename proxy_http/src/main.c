@@ -185,7 +185,7 @@ main(const int argc, const char * argv[])
         .addr       = (struct sockaddr *)&cliaddr,
         .len        = sizeof(cliaddr),
         .sri        = sri,
-        .msg_flags  = msg_flags,
+        .msg_flags  = msg_flags=0,
     };
 
     ss = selector_register(selector, admin_socket, &admin_handler, OP_READ, &admin_data);

@@ -45,7 +45,7 @@ q_poll()
 int
 q_offer(msg_t * msg)
 {
-  qnode_t qnode = malloc(sizeof(qnode));
+  qnode_t qnode = malloc(sizeof(struct qnode));
   if(qnode == NULL) {
     return -1;
   }

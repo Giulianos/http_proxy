@@ -22,7 +22,7 @@ metric_create(const char * name, const char * value)
   int i = 0;
 
   for(; i < metric_size; i++) {
-    if(strncmp(name, metrics[i].name, MAX_NAME) == 0) {
+    if(strncmp(name, metrics[i].name, MAX_NAME+1) == 0) {
       metrics[i].value = realloc(metrics[i].value, strlen(value));
 
       strncpy(metrics[i].value, value, strlen(value)+1);
@@ -34,8 +34,8 @@ metric_create(const char * name, const char * value)
   if(metric_size + 1 > MAX_METRIC)
     return -1;
 
-  strncpy(metrics[metric_size].name, name, MAX_NAME);
-  metrics[i].value = malloc(strlen(value));
+  strncpy(metrics[metric_size].name, name, MAX_NAME+1);
+  metrics[i].value = malloc(strlen(value)+1);
   strncpy(metrics[i].value, value, strlen(value)+1);
 
   metric_size++;
@@ -48,7 +48,7 @@ metric_get(const char *name)
   int i = 0;
 
   for(; i < metric_size; i++) {
-    if(strncmp(name, metrics[i].name, MAX_NAME) == 0)
+    if(strncmp(name, metrics[i].name, MAX_NAME+1) == 0)
       return metrics[i].value;
   }
 

@@ -5,7 +5,6 @@
 #include <ctype.h>
 
 #define MAX_NAME 10
-#define MAX_VALUE 1024
 #define MAX_CONFIG 100
 
 #define PREALLOC_QUANTITY 10
@@ -25,10 +24,10 @@ config_create(const char * name, const char * value)
   int i = 0;
 
   for(; i < config_size; i++) {
-    if(strncmp(name, configurations[i].name, MAX_NAME) == 0) {
+    if(strncmp(name, configurations[i].name, MAX_NAME+1) == 0) {
       configurations[i].value = realloc(configurations[i].value, strlen(value)+1);
 
-      strncpy(configurations[i].value, value, strlen(value));
+      strncpy(configurations[i].value, value, strlen(value)+1);
       return 0;
     }
   }
@@ -37,9 +36,9 @@ config_create(const char * name, const char * value)
   if(config_size + 1 > MAX_CONFIG)
     return -1;
 
-  strncpy(configurations[config_size].name, name, MAX_NAME);
+  strncpy(configurations[config_size].name, name, MAX_NAME+1);
   configurations[i].value = malloc(strlen(value)+1);
-  strncpy(configurations[i].value, value, strlen(value));
+  strncpy(configurations[i].value, value, strlen(value)+1);
 
   config_size++;
   return 0;
@@ -60,7 +59,7 @@ config_get(const char *name)
   int i = 0;
 
   for(; i < config_size; i++) {
-    if(strncmp(name, configurations[i].name, MAX_NAME) == 0)
+    if(strncmp(name, configurations[i].name, MAX_NAME+1) == 0)
       return configurations[i].value;
   }
 
