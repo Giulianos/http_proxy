@@ -245,23 +245,7 @@ assertLocalHost (RequestData *rData, buffer *b, buffer *bOut) {
 
 static void
 assertHeaders (RequestData *rData, buffer *b, buffer *bOut) {
-	insertToBuffer(rData, "gdgd\r\n\r", b, bOut);
-	assert(!checkHeaders(rData, b, bOut));
-	assert(rData->isBufferEmpty);
-	writeToBuf("\n", b);
-	 // Paso a tener fin de headers - \r\n\r\n
-	assert(buffer_peek(b) == '\r');
-	assert(checkHeaders(rData, b, bOut));
-	assert(buffer_peek(b) == 0);
 
-	insertToBuffer(rData, "Hos", b, bOut);
-	assert(!checkHeaders(rData, b, bOut));
-	assert(PEEK_UP_CHAR(b) == 'H');
-	writeToBuf("t:", b);
-	assert(checkHeaders(rData, b, bOut));
-	assert(PEEK_UP_CHAR(b) == 0);
-	// Cuando pasé el Host: voy a la función extractHost
-	// por lo que no guardo el Host:
 }
 
 static void

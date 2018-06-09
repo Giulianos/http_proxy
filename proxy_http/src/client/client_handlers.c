@@ -63,6 +63,11 @@ client_read(struct selector_key * key)
           printf("Invalid request by client\n");
           return;
         }
+//        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf));
+        while(buffer_can_read(&client->pre_req_parse_buf) && buffer_can_write(&client->post_req_parse_buf)){//TODO mfallone must fix
+            buffer_write(&client->post_req_parse_buf,buffer_read(&client->pre_req_parse_buf));
+        }
+
 
       } else {
         /** If buffer is full, stop reading from client */
@@ -152,10 +157,11 @@ client_block(struct selector_key * key)
   if(client->req_data.isLocalHost==true){
       printf("In loop...\n");
 
-      char * msg="HTTP/1.1 500\r\nX-CAUSE: LOOP\r\nConnection: close\r\n\r\n";
+      char * msg="HTTP/1.1 500\r\nX-CAUSE: LOOP\r\nConnection: close\r\n\rn";
       writeToBuf(msg,&client->post_res_parse_buf);
       client->state=READ_RESP;
       selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+
       return;
   }
   origin_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -177,6 +183,7 @@ client_block(struct selector_key * key)
 
   printf("Trying connect...\n");
   selector_fd_set_nio(origin_socket);
+  //selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
 

@@ -21,18 +21,10 @@ checkStartLineEnd (RequestData *rData, buffer *bIn, buffer *bOut);
 static bool
 checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut);
 static bool
-checkHeaders (RequestData *rData, buffer *bIn, buffer *bOut);
+checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut);
 static bool
 extractHost (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool
-checkLength (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool
-checkChunked (RequestData *rData, buffer *bIn, buffer *bOut);
-// Prototipos Body
-static bool
-extractBody (RequestData *rData, buffer *bIn, buffer *bOut);
-static bool
-extractChunkedBody (RequestData *rData, buffer *bIn, buffer *bOut);
+
 
 void
 defaultRequestStruct (RequestData *rData) {
@@ -43,8 +35,6 @@ defaultRequestStruct (RequestData *rData) {
 	rData->method = UNDEFINED_M;
 	rData->port = DEFAULT_PORT;
 	rData->isLocalHost = false;
-	rData->bodyLength = NO_BODY;
-	rData->isChunked = false;
 
 	for (int i = 0; i < HOST_MAX_SIZE; i++) {
 		rData->host[i] = 0;
@@ -53,7 +43,7 @@ defaultRequestStruct (RequestData *rData) {
 
 bool
 checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
-			void(*hostCallback)(const char *, int, void*), void * callbackData) {
+			  void(*hostCallback)(const char *, int, void*), void * callbackData) {
 	bool success;
 
 	// Reservo suficiente memoria para 1 RequestData struct.
@@ -63,7 +53,7 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 
 	rData->hostCallback = hostCallback;
 	rData->callbackData=callbackData;
-//    rData->version=V_1_1;
+	rData->version=V_1_1;//TODO parche groncho mfallone
 
 	success = checkRequestInner(rData, bIn, bOut);
 
@@ -72,12 +62,12 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 
 static bool
 checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
-	bool auxResult;
+	bool aux;
 	bool success = true;
 	bool active = true;
 
-	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 
+	rData->isBufferEmpty = false; // Necesario para transmisión intermitente de bytes.
 	while (success && active) {
 		switch (rData->parserState) {
 			case SPACE_TRANSITION:
@@ -96,30 +86,29 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case URI:
-				auxResult = checkUri(rData, bIn, bOut);
+				aux = checkUri(rData, bIn, bOut);
 				// Si checkUri es falso pero no copié el host sigo adelante.
 				// El problema lo tengo si copié host pero este es inválido.
-				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
+				} else if (aux) { // Ya encontré el host.
+					rData->hostCallback(rData->host, rData->port, rData->callbackData);
+
+					rData->parserState = FINISHED;
 				} else {
-					if (auxResult) { // Ya encontré el host.
-						rData->hostCallback(rData->host, rData->port, rData->callbackData);
-					}
 					rData->parserState = SPACE_TRANSITION;
 					rData->next = VERSION;
 				}
 				break;
 			case URI_HOST:
-				auxResult = checkUriForHost(rData, bIn, bOut);
-				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				aux = checkUriForHost(rData, bIn, bOut);
+				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
+				} else if (aux) { // Ya encontré el host.
+					rData->hostCallback(rData->host, rData->port, rData->callbackData);
+					rData->parserState = FINISHED;
 				} else {
-					if (auxResult) { // Ya encontré el host.
-						rData->hostCallback(rData->host, rData->port, rData->callbackData);
-					}
-					// Aprovecho la rutina del uri relativo que lo único que hace es pasar del
-					// buffer de entrada al de salida hasta que encuentro un ' ' o un '\t'.
-					rData->parserState = RELATIVE_URI;
+					rData->parserState = SPACE_TRANSITION;
 					rData->next = VERSION;
 				}
 				break;
@@ -151,70 +140,30 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 					rData->parserState = FINISHED;
 				} else if (rData->isBufferEmpty) {
 					success = false;
+					break;
 				} else {
-					if (rData->host[0] != 0) { // Tengo un host que lo encontré en el uri.
-						rData->hostCallback(rData->host, rData->port, rData->callbackData);
-						// Si tengo un post todavía necesito parsear el body.
-						rData->parserState = (rData->method == POST? HEADERS : HOST_FOUND);
-					} else {
-						rData->parserState = HEADERS;
-					}
+					rData->parserState = HEADERS;
 				}
 				break;
 			case HEADERS:
-				if (!checkHeaders(rData, bIn, bOut)) {
-					success = false;
+				if (checkHostHeader(rData, bIn, bOut)) { // Ya encontré el host header.
+					rData->parserState = SPACE_TRANSITION;
+					rData->next = HOST;
 				} else {
-					if (rData->next == FINISHED) { // Si encontré end of headers.
-						rData->parserState = BODY;
-					} else {
-						rData->parserState = SPACE_TRANSITION;
-					}
+					success = false;
 				}
 				break;
 			case HOST:
-				auxResult = extractHost(rData, bIn, bOut);
-				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				aux = extractHost(rData, bIn, bOut);
+				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
-				} else if (auxResult) {
+				} else if (aux) { // Ya encontré el host.
 					rData->hostCallback(rData->host, rData->port, rData->callbackData);
-					// Si tengo un post todavía necesito parsear el body.
-					rData->parserState = (rData->method == POST? HEADERS : HOST_FOUND);
-				} else {
-					rData->parserState = HEADERS;
-				}
-				break;
-			case LENGTH:
-				if (!checkLength(rData, bIn, bOut) && rData->isBufferEmpty) {
-					success = false;
-				} else {
-					rData->parserState = HEADERS;
-				}
-				break;
-			case CHUNKED:
-				if (!checkChunked(rData, bIn, bOut) && rData->isBufferEmpty) {
-					success = false;
-				} else {
-					rData->parserState = HEADERS;
-				}
-				break;
-			case BODY:
-				if (!extractBody(rData, bIn, bOut)) {
-					success = false;
-				} else {
 					rData->parserState = FINISHED;
 				}
 				break;
-			case HOST_FOUND:
-				// Caso en que lo único que quiero es vaciar el buffer de entrada
-				// habiendo encontrado el host y habiendo pasado la línea de inicio.
-				while (buffer_can_read(bIn)) {
-					buffer_write(bOut, buffer_read(bIn));
-				}
-				rData->isBufferEmpty = true;
-				success = false;
-				break;
 			case FINISHED:
+
 				active = false;
 				break;
 		}
@@ -228,7 +177,7 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				break;
 			case METHOD:
 				rData->state = (rData->method == UNDEFINED_M ?
-						GENERAL_METHOD_ERROR : UNSUPPORTED_METHOD_ERROR);
+								GENERAL_METHOD_ERROR : UNSUPPORTED_METHOD_ERROR);
 				break;
 			case URI:
 				rData->state = HOST_ERROR;
@@ -252,15 +201,8 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 			case HOST:
 				rData->state = HOST_ERROR;
 				break;
-			case LENGTH:
-				break;
-			case CHUNKED:
-				break;
-			case BODY:
-				break;
-			case HOST_FOUND:
-				break;
 			case FINISHED:
+				//readAndWrite(bIn,bOut);
 				break;
 		}
 	}
@@ -288,7 +230,7 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c = READ_UP_CHAR(bIn, bOut);
 	char methodPrefix[2] = {c, 0};
 
-    if (c == 0) {
+	if (c == 0) {
 		rData->isBufferEmpty = true;
 		return false;
 	}
@@ -440,51 +382,38 @@ checkLocalHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 }
 
 static bool
-checkHeaders (RequestData *rData, buffer *bIn, buffer *bOut) {
+checkHostHeader (RequestData *rData, buffer *bIn, buffer *bOut) {
 	char c;
-	rData->next = HEADERS;
-
+	bool hostHeader = false;
+	bool headersEnd = false;
 	while ((c = READ_UP_CHAR(bIn, bOut)) != 0) {
-		if (c == 'C') {
-			if (matchFormat("ONTENT-LENGTH:", bIn, bOut, "C", &(rData->isBufferEmpty))) {
-				rData->next = LENGTH;
-				break;
-			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
-				break;
-			}
-		} else if (c == 'T') {
-			if (matchFormat("RANSFER-ENCODING:", bIn, bOut, "T", &(rData->isBufferEmpty))) {
-				rData->next = CHUNKED;
-				break;
-			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
-				break;
-			}
-		} else if (c == 'H' && rData->host[0] == 0) { // Me fijo si todavía no tengo host. (Dejo el primero)
+		if (c == 'H') {
 			if (matchFormat("OST:", bIn, bOut, "H", &(rData->isBufferEmpty))) {
-				rData->next = HOST;
+				hostHeader = true;
 				break;
 			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		} else if (c == '\r') {
-			if (checkLF(bIn, bOut, "\r", &(rData->isBufferEmpty))) {
-				if (checkCRLF(bIn, bOut, "\r\n", &(rData->isBufferEmpty))) {
-					rData->next = FINISHED;
-					break;
-				} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
-					break;
-				}
+			if (checkLF(bIn, bOut, "\r", &(rData->isBufferEmpty))
+				&& checkCRLF(bIn, bOut, "\r\n", &(rData->isBufferEmpty))) { // Busco el CRLF CRLF.
+				headersEnd = true;
+				break;
 			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 				break;
 			}
 		}
 	}
 
-	if (rData->next == HEADERS) {
-		rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
-		return false;
+	if (hostHeader) {
+		return true;
 	}
-	return true;
+	if (headersEnd) {
+		return false; // No encontré el header host.
+	}
+
+	rData->isBufferEmpty = true; // Necesario para el caso en que c == 0.
+	return false;
 }
 
 static bool
@@ -502,7 +431,7 @@ extractHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 		readAndWrite(bIn, bOut);
 	}
 
-	// En principio, no soporto IPv6 directamente desde el request.
+	// En principio, no soporto IPv6.
 	if (c == ':')  {
 		readAndWrite(bIn, bOut);
 		validHost = getNumber(&(rData->port), bIn, bOut, ":", &(rData->isBufferEmpty));
@@ -519,82 +448,4 @@ extractHost (RequestData *rData, buffer *bIn, buffer *bOut) {
 	return i < HOST_MAX_SIZE && validHost && (c == ' ' || c == '\t' || c == '\r');
 }
 
-static bool
-checkLength (RequestData *rData, buffer *bIn, buffer *bOut) {
-	return getNumber(&(rData->bodyLength), bIn, bOut, "", &(rData->isBufferEmpty));
-}
-
-static bool
-checkChunked (RequestData *rData, buffer *bIn, buffer *bOut) {
-	if (matchFormat("CHUNKED", bIn, bOut, "", &(rData->isBufferEmpty))) {
-		rData->isChunked = true;
-		return true;
-	}
-	return false;
-}
-
 /**               FIN DE FUNCIONES DE HEADER                    **/
-
-/**               COMIENZO FUNCIONES DE BODY                    **/
-
-static bool
-extractBody (RequestData *rData, buffer *bIn, buffer *bOut) {
-	// Chunked encoding sobreescribe content length.
-	if (rData->isChunked) {
-		return extractChunkedBody(rData, bIn, bOut);
-	}
-	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
-		if (!writeToTransfBufWithZero(bIn, bOut, &(rData->bodyLength), &(rData->isBufferEmpty))) {
-			return false;
-		}
-		return true;
-	}
-
-	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
-		readAndWriteWithZero(bIn, bOut, &(rData->isBufferEmpty));
-	}
-	return false;
-}
-
-static bool
-extractChunkedBody (RequestData *rData, buffer *bIn, buffer *bOut) {
-	int chunkLength = 0;
-
-	// Con el do while, la última iteración corresponde a dos
-	// empty line consecutivos como corresponde.
-	do {
-		if (!getHexNumber(&(rData->bodyLength), bIn, bOut, "", &(rData->isBufferEmpty))) {
-			return false;
-		}
-		chunkLength = rData->bodyLength;
-
-		if (!checkCRLF(bIn, bOut, "", &(rData->isBufferEmpty))) { // Delimitador de longitud de chunk.
-			if (rData->isBufferEmpty) {
-				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
-			}
-			return false;
-		}
-
-		if (!writeToTransfBufWithZero(bIn, bOut, &(rData->bodyLength), &(rData->isBufferEmpty))) {
-			// si lectura se corta, en bodyLength me queda lo que me faltaba por leer.
-			if (rData->bodyLength > 0) {
-				writePrefix(bIn, "\r\n");
-				writeHexToBufReverse(rData->bodyLength, bIn); // Vuelvo a poner el chunk length.
-			}
-			return false;
-		}
-
-		if (!checkCRLF(bIn, bOut, "", &(rData->isBufferEmpty))) { // Delimitador de chunk.
-			// Si buffer queda vacío, escribo un chunk cualquiera para que la siguiente vez que lea
-			// no parezca como que tengo un fin de chunks. Al escribir en zona reservada, el chuck
-			// ficticio no va al buffer de salida en la siguiente pasada como es de esperar.
-			// Si hay un fin de chunks pongo lo que tiene que ir para el mismo.
-			writePrefix(bIn, chunkLength > 0 ? "1\r\n1" : "0\r\n");
-			return false;
-		}
-	} while (chunkLength > 0);
-
-	return true;
-}
-
-/**               FIN DE FUNCIONES DE BODY                       **/

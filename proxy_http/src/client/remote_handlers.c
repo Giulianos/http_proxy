@@ -51,6 +51,8 @@ remote_read(struct selector_key * key)
       }
       break;
       default: //dummy
+          printf("dummy\r\n");
+
             break;
   }
 
@@ -83,7 +85,7 @@ remote_write(struct selector_key * key)
 
         buffer_read_adv(&client->post_req_parse_buf, written_bytes);
         /** As i read from the buffer, read from the client */
-        selector_set_interest(client->selector, client->client_fd, OP_READ);
+            selector_set_interest(client->selector, client->client_fd, OP_READ);
       } else if(client->request_complete) {
         /** If the request is complete, write to the client and read from origin */
         selector_set_interest(client->selector, client->origin_fd, OP_READ);
@@ -95,6 +97,7 @@ remote_write(struct selector_key * key)
       }
       break;
   default: //dummy
+        printf("dummy\r\n");
           break;
   }
 }
