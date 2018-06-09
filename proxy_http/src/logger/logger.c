@@ -44,11 +44,8 @@ void log_thread(struct log* l){
 
 void log_send(struct log* l,char *s){
     size_t len;
-    len = strlen(s);
-    if(len>=2047){
-        perror("Too long");
-        return;
-    }
+    len = strnlen(s,2048);
+
     size_t buffer_space;
     uint8_t * buffer_ptr = buffer_write_ptr(&l->logbuf, &buffer_space);
     strncpy((char *) buffer_ptr, s, buffer_space);
@@ -59,6 +56,7 @@ void log_send(struct log* l,char *s){
         buffer_ptr[len]=0;
         buffer_write_adv(&l->logbuf, len+1);
     }
+    selector_set_interest(l->selector, l->writefd, OP_WRITE);
 }
 
 void log_sendf(struct log* l,const char *fmt, ...){
@@ -80,8 +78,8 @@ log_write(struct selector_key * key){
     if(buffer_size>0){
         ssize_t written_bytes = write(l->writefd, buffer_ptr, buffer_size);
         buffer_read_adv(&l->logbuf, written_bytes);
-//    }else{
-//        selector_set_interest(l->selector, l->writefd, OP_NOOP);
+    }else{
+       selector_set_interest(l->selector, l->writefd, OP_NOOP);
     }
 
 }

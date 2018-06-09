@@ -304,7 +304,7 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 		}
 	}
 
-	return rData->method == GET || rData->method == HEAD || rData->method == POST;
+	return rData->method == GET || rData->method == HEAD || rData->method == POST || rData->method == PUT;
 }
 
 static bool

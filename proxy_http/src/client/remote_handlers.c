@@ -12,14 +12,14 @@ void
 remote_read(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
-  switch(client->state) {
+    switch(client->state) {
     /** This is executed infinitly, check! */
     case READ_RESP:
       if(buffer_can_write(&client->pre_res_parse_buf)) {
         size_t buffer_space;
         uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_res_parse_buf, &buffer_space);
         ssize_t read_bytes = read(client->origin_fd, buffer_ptr, buffer_space);
-        if(read_bytes<0) {
+        if(read_bytes<=0) {
             printf("Read failed! closing!!!!\n");
             selector_set_interest(client->selector, client->client_fd, OP_WRITE);
             selector_unregister_fd(client->selector,client->origin_fd);
@@ -51,7 +51,7 @@ remote_read(struct selector_key * key)
       }
       break;
       default: //dummy
-          break;
+            break;
   }
 
 }
@@ -60,22 +60,26 @@ void
 remote_write(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
-
+    printf("Sending request..\n");
   switch(client->state) {
     case SEND_REQ:
       if(buffer_can_read(&client->post_req_parse_buf)) {
-        printf("Sending request..\n");
+
         size_t buffer_size;
         uint8_t * buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
         ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
          /** If the read fails, close the connection */
         if(written_bytes==-1) {
           printf("Remote write failed! (%s)\n", strerror(errno));
+          if(errno==ECONNREFUSED){
+              char * msg="HTTP/1.1 500\r\nX-CAUSE: ORIGINREFUSE\r\nConnection: close\r\n\r\n";
+              writeToBuf(msg,&client->post_res_parse_buf);
+              client->state=READ_RESP;
+          }
           selector_set_interest(client->selector, client->client_fd, OP_WRITE);
           selector_unregister_fd(client->selector,client->origin_fd);
           return;
         }
-
 
         buffer_read_adv(&client->post_req_parse_buf, written_bytes);
         /** As i read from the buffer, read from the client */

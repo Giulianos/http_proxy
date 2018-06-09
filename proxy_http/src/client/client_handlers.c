@@ -49,6 +49,7 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         /** If the read fails, close the connection */
         if(read_bytes==-1){
+            printf("end reading client\n");
               selector_unregister_fd(client->selector,client->client_fd);
         }
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
@@ -142,9 +143,21 @@ client_block(struct selector_key * key)
   /** Connect to remote host */
     if(res== NULL){
         printf("I cant resolve this domain %s\n",client->host.fqdn);
-        selector_unregister_fd(client->selector,client->client_fd);
+        char * msg="HTTP/1.1 500\r\nX-CAUSE: WRONGDOMAIN\r\nConnection: close\r\n\r\n";
+        writeToBuf(msg,&client->post_res_parse_buf);
+        client->state=READ_RESP;
+        selector_set_interest(client->selector, client->client_fd, OP_WRITE);
         return;
     }
+  if(client->req_data.isLocalHost==true){
+      printf("In loop...\n");
+
+      char * msg="HTTP/1.1 500\r\nX-CAUSE: LOOP\r\nConnection: close\r\n\r\n";
+      writeToBuf(msg,&client->post_res_parse_buf);
+      client->state=READ_RESP;
+      selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+      return;
+  }
   origin_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (origin_socket < 0) {
     client->state = ERROR;
@@ -164,7 +177,6 @@ client_block(struct selector_key * key)
 
   printf("Trying connect...\n");
   selector_fd_set_nio(origin_socket);
-  //selector_register(client->selector, origin_socket, &remote_handlers, OP_WRITE, (void*)client);
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
 

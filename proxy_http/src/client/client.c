@@ -89,7 +89,7 @@ client_free_resources(client_t client) {
     client->origin_fd = -1;
 
   }
-//    shutdown(client->client_fd,SHUT_RDWR);
+    shutdown(client->client_fd,SHUT_RDWR);
     close(client->client_fd);
     free(client->pre_req_parse_buf_mem);
     free(client->post_req_parse_buf_mem);
