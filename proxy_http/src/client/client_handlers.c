@@ -62,9 +62,6 @@ client_read(struct selector_key * key)
           printf("Invalid request by client\n");
           return;
         }
-        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO mfallone must fix
-          //TODO check de 0x00 value
-
 
       } else {
         /** If buffer is full, stop reading from client */

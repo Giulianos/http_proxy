@@ -22,6 +22,8 @@
 // El puerto por default es el 80.
 #define DEFAULT_PORT 80
 
+#define NO_BODY -1
+
 typedef enum {
 	SPACE_TRANSITION,
 	METHOD,
@@ -33,6 +35,10 @@ typedef enum {
 	LOCALHOST_HEADER_CHECK,
 	HEADERS,
 	HOST,
+	LENGTH,
+	CHUNKED,
+	BODY,
+	HOST_FOUND,
 	FINISHED
 } requestParserState;
 
@@ -58,6 +64,8 @@ typedef struct RequestData {
 	char host[HOST_MAX_SIZE];
 	int port;
 	bool isLocalHost;
+	int bodyLength; // Si estoy en modo chunk lo uso para cada chunk.
+	bool isChunked;
 	void * callbackData;
 	void(*hostCallback)(const char *, int, void*);
 } RequestData;

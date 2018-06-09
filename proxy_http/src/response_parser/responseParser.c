@@ -173,7 +173,7 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				}
 				break;
 			case RES_FINISHED:
-					active = false;
+				active = false;
 				break;
 		}
 	}
