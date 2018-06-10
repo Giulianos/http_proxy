@@ -42,10 +42,14 @@ struct client_cdt {
     buffer pre_res_parse_buf;
     uint8_t  * post_res_parse_buf_mem;
     buffer post_res_parse_buf;
+    uint8_t  * pre_transf_buf_mem;
+    buffer pre_transf_buf;
 
     /** Client's FDs and selector */
     int client_fd;
     int origin_fd;
+    int transf_in_fd;
+    int transf_out_fd;
     fd_selector selector;
 
     /** Request parser */
@@ -67,6 +71,9 @@ struct client_cdt {
     bool request_complete;
     bool response_complete;
 
+    /** Other flags */
+    bool shouldTransform;
+
     /** Request info */
     struct host_details host;
 };
@@ -84,6 +91,10 @@ client_terminate(client_t client);
 void
 client_set_host(const char * host, int port, void * data);
 
+ssize_t
+dump_chunk_from_fd(int src_fd, buffer * dst_buffer);
 
+ssize_t
+write_empty_chunk(buffer * dst_buffer);
 
 #endif

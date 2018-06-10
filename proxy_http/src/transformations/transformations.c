@@ -1,6 +1,7 @@
 #include <transformations/transformations.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /** TODO (Config): get name of the program from config module */
 
@@ -44,7 +45,7 @@ transformations_new(int * fd_in, int * fd_out)
       dup2(pipe_out[1], STDOUT_FILENO);
 
       /** TODO: transf should be gotten from config module */
-      if(-1 == execl("/bin/sh", "sh", "-c", "cat", (char *) 0)) {
+      if(-1 == execl("/bin/sh", "sh", "-c", "sed 's/google/esto_decia_google/'", (char *) 0)) {
         close(pipe_in[0]);
         close(pipe_out[1]);
         return -1;
@@ -65,6 +66,8 @@ transformations_new(int * fd_in, int * fd_out)
 
       *fd_in = pipe_in[1];
       *fd_out = pipe_out[0];
+
+      printf("Transformation created!\n");
       return 0;
   }
 }

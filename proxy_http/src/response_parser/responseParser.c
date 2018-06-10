@@ -46,7 +46,7 @@ defaultResponseStruct (ResponseData *rData) {
 	rData->cEncoding = IDENTITY;
 	rData->isClose = false;
 	rData->isChunked = false;
-	rData->withTransf = false;
+	rData->withTransf = true;
 }
 
 bool
