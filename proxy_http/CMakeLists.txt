@@ -8,6 +8,9 @@ project(proxy_http C)
 set(CMAKE_C_STANDARD 99)
 add_compile_options(-pedantic -Wall -O1)
 
+# ASAN
+add_compile_options(-fsanitize=address)
+link_libraries("-fsanitize=address")
 
 include_directories(src/include)
 
