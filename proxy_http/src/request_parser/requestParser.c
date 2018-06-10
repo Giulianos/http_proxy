@@ -49,11 +49,8 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 	// Reservo suficiente memoria para 1 RequestData struct.
 	RequestData *rData=rd;
 
-//	defaultRequestStruct(&rData);
-
 	rData->hostCallback = hostCallback;
 	rData->callbackData=callbackData;
-	rData->version=V_1_1;//TODO parche groncho mfallone
 
 	success = checkRequestInner(rData, bIn, bOut);
 
@@ -62,7 +59,7 @@ checkRequest (RequestData *rd, buffer *bIn, buffer *bOut,
 
 static bool
 checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
-	bool aux;
+	bool auxResult;
 	bool success = true;
 	bool active = true;
 
@@ -86,30 +83,29 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case URI:
-				aux = checkUri(rData, bIn, bOut);
+				auxResult = checkUri(rData, bIn, bOut);
 				// Si checkUri es falso pero no copié el host sigo adelante.
 				// El problema lo tengo si copié host pero este es inválido.
-				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
-				} else if (aux) { // Ya encontré el host.
-					rData->hostCallback(rData->host, rData->port, rData->callbackData);
-
-					rData->parserState = FINISHED;
 				} else {
-					rData->parserState = SPACE_TRANSITION;
-					rData->next = VERSION;
+					if (auxResult) { // Ya encontré el host.
+						rData->hostCallback(rData->host, rData->port, rData->callbackData);
+					}
+					rData->parserState = RELATIVE_URI;
 				}
 				break;
 			case URI_HOST:
-				aux = checkUriForHost(rData, bIn, bOut);
-				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				auxResult = checkUriForHost(rData, bIn, bOut);
+				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
-				} else if (aux) { // Ya encontré el host.
-					rData->hostCallback(rData->host, rData->port, rData->callbackData);
-					rData->parserState = FINISHED;
 				} else {
-					rData->parserState = SPACE_TRANSITION;
-					rData->next = VERSION;
+					if (auxResult) { // Ya encontré el host.
+						rData->hostCallback(rData->host, rData->port, rData->callbackData);
+					}
+					// Aprovecho la rutina del uri relativo que lo único que hace es pasar del
+					// buffer de entrada al de salida hasta que encuentro un ' ' o un '\t'.
+					rData->parserState = RELATIVE_URI;
 				}
 				break;
 			case RELATIVE_URI:
@@ -140,9 +136,14 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 					rData->parserState = FINISHED;
 				} else if (rData->isBufferEmpty) {
 					success = false;
-					break;
 				} else {
-					rData->parserState = HEADERS;
+					if (rData->host[0] != 0) { // Tengo un host que lo encontré en el uri.
+						rData->hostCallback(rData->host, rData->port, rData->callbackData);
+						// Si tengo un post todavía necesito parsear el body.
+						rData->parserState = FINISHED;
+					} else {
+						rData->parserState = HEADERS;
+					}
 				}
 				break;
 			case HEADERS:
@@ -154,16 +155,15 @@ checkRequestInner (RequestData *rData, buffer *bIn, buffer *bOut) {
 				}
 				break;
 			case HOST:
-				aux = extractHost(rData, bIn, bOut);
-				if (!aux && (rData->host[0] != 0 || rData->isBufferEmpty)) {
+				auxResult = extractHost(rData, bIn, bOut);
+				if (!auxResult && (rData->host[0] != 0 || rData->isBufferEmpty)) {
 					success = false;
-				} else if (aux) { // Ya encontré el host.
+				} else if (auxResult) { // Ya encontré el host.
 					rData->hostCallback(rData->host, rData->port, rData->callbackData);
 					rData->parserState = FINISHED;
 				}
 				break;
 			case FINISHED:
-
 				active = false;
 				break;
 		}
