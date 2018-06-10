@@ -89,6 +89,9 @@ remote_write(struct selector_key* key)
           return;
         }
 
+        /** update transfered_bytes metric */
+        metric_add_transfered_bytes((double)written_bytes);
+
         buffer_read_adv(&client->post_req_parse_buf, written_bytes);
         /** As i read from the buffer, read from the client */
         selector_set_interest(client->selector, client->client_fd, OP_READ);

@@ -108,6 +108,10 @@ client_write(struct selector_key* key)
           selector_unregister_fd(client->selector, client->client_fd);
           return;
         }
+
+        /** update transfered_bytes metric */
+        metric_add_transfered_bytes((double)written_bytes);
+
         buffer_read_adv(&client->post_res_parse_buf, written_bytes);
         /** As i read from the buffer, read from the origin or transf */
         if(client->shouldTransform) {
@@ -206,6 +210,9 @@ client_block(struct selector_key* key)
 void
 client_close(struct selector_key* key)
 {
+  client_t client = GET_CLIENT(key);
+
   printf("Bye!\n");
-  client_free_resources(GET_CLIENT(key));
+  metric_close_connection(client->connection_time);
+  client_free_resources(client);
 }

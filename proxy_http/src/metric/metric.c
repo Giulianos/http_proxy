@@ -30,7 +30,11 @@ metric_get_value_string(int index, char * value)
   if(index >= METRICS_ENUM_SIZE)
     return;
 
-  sprintf(value, "%f", metrics[index]);
+  if((enum metrics)index == AVG_CONNECTION_TIME) {
+    sprintf(value, "%f", metrics[index]);
+  } else {
+    sprintf(value, "%.0f", metrics[index]);
+  }
 }
 
 char *
@@ -92,7 +96,7 @@ metric_close_connection(connection_time_t contime)
 }
 
 void
-add_transfered_bytes(double curr_transfered_bytes)
+metric_add_transfered_bytes(double curr_transfered_bytes)
 {
   metrics[TRANSFERED_BYTES] += curr_transfered_bytes;
 }

@@ -62,6 +62,6 @@ metric_close_connection(connection_time_t contime);
  * @param curr_transfered_bytes sums and updates TRANSFERED_BYTES
  */
 void
-add_transfered_bytes(double curr_transfered_bytes);
+metric_add_transfered_bytes(double curr_transfered_bytes);
 
 #endif

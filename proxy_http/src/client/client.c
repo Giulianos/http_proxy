@@ -48,7 +48,7 @@ client_new(const struct client_config* config)
   client->selector = config->selector;
 
   /** Transformation setup */
-  client->shouldTransform = true;
+  client->shouldTransform = false;
   transformations_new(&client->transf_in_fd, &client->transf_out_fd);
 
   if(client->shouldTransform) {
@@ -100,6 +100,9 @@ client_new(const struct client_config* config)
   //      .ready_flag = &client->response_complete,
   //  };
   //  client->response_parser = response_parser_new(&res_parser_config);
+
+  /** add client's metrics */
+  client->connection_time = metric_new_connection();
 
   return client;
 }

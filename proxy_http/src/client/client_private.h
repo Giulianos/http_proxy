@@ -9,6 +9,7 @@
 #include <selector/selector.h>
 #include <client/client.h>
 #include <responseParser/responseParser.h>
+#include <metric/metric.h>
 
 #define GET_CLIENT(key) (client_t)((key)->data)
 
@@ -76,6 +77,9 @@ struct client_cdt {
 
     /** Request info */
     struct host_details host;
+
+    /** Connection time saving */
+    connection_time_t connection_time;
 };
 
 
