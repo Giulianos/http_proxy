@@ -56,20 +56,21 @@ send_metric(unsigned char metric)
 {
   msg_t * msg;
   char * name;
-  char * value;
+  char value[MAX_VALUE];
   size_t name_len;
   size_t value_len;
 
+  value[0] = '\0';
   name = metric_get_name(metric);
   if(name == NULL) {
     send_error(METRIC_NOT_FOUND);
     return;
   }
-  value = metric_get_from_index(metric);
+  metric_get_value_string(metric, value);
   name_len = strlen(name);
   value_len = strlen(value);
 
-  if(value == NULL) {
+  if(value[0] == '\0') {
     send_error(UNEXPECTED_ERROR);
     return;
   }

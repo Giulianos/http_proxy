@@ -1,78 +1,98 @@
 #include <metric/metric.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
+#include <stdlib.h>
 
-#define MAX_NAME 10
-#define MAX_METRIC 100
+static double connection_time_sum = 0;
 
-struct metric {
-    char name[MAX_NAME+1];
-    char * value;
+struct connection_time {
+  time_t init_time;
+  time_t end_time;
 };
 
-static struct metric metrics[MAX_METRIC];
-
-static int metric_size = 0;
+static double metrics[METRICS_ENUM_SIZE];
 
 int
-metric_create(const char * name, const char * value)
+metric_create(enum metrics number, double value)
 {
-  int i = 0;
-
-  for(; i < metric_size; i++) {
-    if(strncmp(name, metrics[i].name, MAX_NAME+1) == 0) {
-      metrics[i].value = realloc(metrics[i].value, strlen(value));
-
-      strncpy(metrics[i].value, value, strlen(value)+1);
-      return 0;
-    }
-  }
-
-  /** if i didn't return, i need to add the metric */
-  if(metric_size + 1 > MAX_METRIC)
+  if(number >= METRICS_ENUM_SIZE)
     return -1;
 
-  strncpy(metrics[metric_size].name, name, MAX_NAME+1);
-  metrics[i].value = malloc(strlen(value)+1);
-  strncpy(metrics[i].value, value, strlen(value)+1);
+  metrics[number] = value;
 
-  metric_size++;
   return 0;
 }
 
-char *
-metric_get(const char *name)
+void
+metric_get_value_string(int index, char * value)
 {
-  int i = 0;
+  if(index >= METRICS_ENUM_SIZE)
+    return;
 
-  for(; i < metric_size; i++) {
-    if(strncmp(name, metrics[i].name, MAX_NAME+1) == 0)
-      return metrics[i].value;
-  }
-
-  return NULL;
-}
-
-char *
-metric_get_from_index(int index)
-{
-  if(index >= metric_size)
-    return NULL;
-  return metrics[index].value;
+  sprintf(value, "%f", metrics[index]);
 }
 
 char *
 metric_get_name(unsigned char number)
 {
-  if(number >= metric_size)
+  enum metrics metric;
+  if(number >= METRICS_ENUM_SIZE)
     return NULL;
-  return metrics[number].name;
+  metric = (enum metrics) number;
+  switch(metric) {
+    case INST_CONCURRENT_CONNECTIONS:
+      return "inst_concurrent_conections";
+    case MAX_CONCURRENT_CONNECTIONS:
+      return "max_concurrent_connections";
+    case ACCESSES:
+      return "acceses";
+    case TRANSFERED_BYTES:
+      return "transfered_bytes";
+    case AVG_CONNECTION_TIME:
+      return "avg_connection_time";
+    default:
+      return NULL;
+  }
 }
 
 int
 metric_get_size()
 {
-  return metric_size;
+  return METRICS_ENUM_SIZE;
+}
+
+connection_time_t
+metric_new_connection()
+{
+  connection_time_t contime;
+
+  contime = malloc(sizeof(struct connection_time));
+  if(contime == NULL)
+    return NULL;
+
+  contime->init_time = time(NULL);
+
+  metrics[INST_CONCURRENT_CONNECTIONS] += 1;
+  if(metrics[INST_CONCURRENT_CONNECTIONS] > metrics[MAX_CONCURRENT_CONNECTIONS]) {
+    metrics[MAX_CONCURRENT_CONNECTIONS] = metrics[INST_CONCURRENT_CONNECTIONS];
+  }
+
+  return contime;
+}
+
+void
+metric_close_connection(connection_time_t contime)
+{
+  contime->end_time = time(NULL);
+  metrics[INST_CONCURRENT_CONNECTIONS] -= 1;
+  metrics[ACCESSES] += 1;
+  connection_time_sum += difftime(contime->end_time, contime->init_time);
+  metrics[AVG_CONNECTION_TIME] = connection_time_sum / metrics[ACCESSES];
+}
+
+void
+add_transfered_bytes(double curr_transfered_bytes)
+{
+  metrics[TRANSFERED_BYTES] += curr_transfered_bytes;
 }
