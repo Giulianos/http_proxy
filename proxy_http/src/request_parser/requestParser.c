@@ -251,15 +251,11 @@ extractHttpMethod (RequestData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 checkUri (RequestData *rData, buffer *bIn, buffer *bOut) {
-	if (matchFormat("HTTP", bIn, bOut, "", &(rData->isBufferEmpty))) {
-		if (matchFormat("://", bIn, bOut, "HTTP", &(rData->isBufferEmpty))) {
-			rData->parserState = URI_HOST;
+	if (matchFormat("HTTP://", bIn, bOut, "", &(rData->isBufferEmpty))) {
+		rData->parserState = URI_HOST;
 
-			if (checkUriForHost(rData, bIn, bOut)) {
-				return true;
-			} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
-				return false;
-			}
+		if (checkUriForHost(rData, bIn, bOut)) {
+			return true;
 		} else if (rData->isBufferEmpty) { // En algún momento el buffer quedó vacío.
 			return false;
 		}

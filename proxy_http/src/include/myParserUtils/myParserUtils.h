@@ -32,6 +32,10 @@ readAndWrite (buffer *b, buffer *bOut);
 uint8_t
 readAndWriteWithZero (buffer *b, buffer *bOut, bool *bEmpty);
 
+/** Escribo hasta que no tengo nada para leer en zona no reservada y contemplo el caso en que tengo 0 */
+uint8_t
+readAndWriteAllWithZero (buffer *b, buffer *bOut);
+
 /** Leo todos los siguientes espacios y tabs de b. */
 uint8_t
 moveThroughSpaces (buffer *b);

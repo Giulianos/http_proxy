@@ -63,12 +63,7 @@ client_read(struct selector_key * key)
           printf("Invalid request by client\n");
           return;
         }
-//        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf));
-        while(buffer_can_read(&client->pre_req_parse_buf) && buffer_can_write(&client->post_req_parse_buf)){//TODO mfallone must fix
-            buffer_write(&client->post_req_parse_buf,buffer_read(&client->pre_req_parse_buf));
-        }
-
-
+	readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
       } else {
         /** If buffer is full, stop reading from client */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
@@ -85,10 +80,9 @@ client_read(struct selector_key * key)
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
         client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
                                                 &client->post_req_parse_buf, client_set_host, client);
-        while(readAndWrite(&client->pre_req_parse_buf,&client->post_req_parse_buf)); //TODO mfallone must fix
-          //TODO check de 0x00 value
-        client->state= (client_state_t) client->req_data.state;
 
+	readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
+        client->state= (client_state_t) client->req_data.state;
 
           /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);

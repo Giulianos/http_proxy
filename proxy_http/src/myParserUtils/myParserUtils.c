@@ -37,6 +37,13 @@ readAndWriteWithZero (buffer *b, buffer *bOut, bool *bEmpty) {
 }
 
 uint8_t
+readAndWriteAllWithZero (buffer *b, buffer *bOut) {
+	while (!is_reserved(b) && buffer_can_read(b) && buffer_can_write(bOut)) {
+		buffer_write(bOut, buffer_read(b));
+	}
+}
+
+uint8_t
 moveThroughSpaces (buffer *b) {
 	uint8_t c;
 
