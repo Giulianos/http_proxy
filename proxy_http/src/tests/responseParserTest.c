@@ -6,11 +6,11 @@ assertVersion (ResponseData *rData, buffer *b, buffer *bOut);
 static void
 assertStatus (ResponseData *rData, buffer *b, buffer *bOut);
 static void
+assertType (ResponseData *rData, buffer *b, buffer *bOut);
+static void
 assertCompleteResponseWithLength (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf);
 static void
 assertConnection (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf);
-static void
-assertCompleteResponseWithLengthAndTransf (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf);
 static void
 assertCompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf);
 static void
@@ -61,11 +61,11 @@ main (int argc, char *argv[]) {
 		return 1;
 	}
 
-	assertVersion(rData, &b, &bOut);
-	assertStatus(rData, &b, &bOut);
-	assertCompleteResponseWithLength(rData, &b, &bOut, &bTransf);
+/**	assertVersion(rData, &b, &bOut);
+	assertStatus(rData, &b, &bOut);*/
+	assertType (rData, &b, &bOut);
+/**	assertCompleteResponseWithLength(rData, &b, &bOut, &bTransf);
 	assertConnection(rData, &b, &bOut, &bTransf);
-	assertCompleteResponseWithLengthAndTransf(rData, &b, &bOut, &bTransf);
 	assertCompleteResponseWithChunk(rData, &b, &bOut, &bTransf);
 	assertCompleteResponseWithChunkAndZeros(rData, &b, &bOut, &bTransf);
 	assertCompleteResponseWithChunkAndTransf(rData, &b, &bOut, &bTransf);
@@ -75,7 +75,7 @@ main (int argc, char *argv[]) {
 	assertIncompleteResponseWithLengthByByteAndZeros(rData, &b, &bOut, &bTransf);
 	assertIncompleteResponseWithChunkByByte(rData, &b, &bOut, &bTransf);
 	assertIncompleteResponseWithChunkByByteAndZeros(rData, &b, &bOut, &bTransf);
-	assertIncompleteResponseWithChunkAndTransfByByte(rData, &b, &bOut, &bTransf);
+	assertIncompleteResponseWithChunkAndTransfByByte(rData, &b, &bOut, &bTransf);*/
 
 	free(rData);
 
@@ -114,11 +114,34 @@ assertStatus (ResponseData *rData, buffer *b, buffer *bOut) {
 }
 
 static void
+assertType (ResponseData *rData, buffer *b, buffer *bOut) {
+	char *myType1 = "text/plain\r"; // Pongo \r como delimitador.
+	char *myType2 = "image/png\r";
+	char *myType3 = "application/json\r";
+	char *typeCompare = "text/*;image/png";
+
+	insertToBuffer(rData, myType1, b, bOut);
+	assert(rData->withTransf == false);
+	assert(checkType(rData, b, bOut,typeCompare));
+	assert(rData->withTransf == true);
+
+	insertToBuffer(rData, myType2, b, bOut);
+	assert(rData->withTransf == false);
+	assert(checkType(rData, b, bOut,typeCompare));
+	assert(rData->withTransf == true);
+
+	insertToBuffer(rData, myType3, b, bOut);
+	assert(rData->withTransf == false);
+	assert(!checkType(rData, b, bOut,typeCompare));
+	assert(rData->withTransf == false);
+}
+
+static void
 assertCompleteResponseWithLength (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	char *msgIn = "HTTP/1.1 200 OK\r\nconTeNt-lengTh:3\r\n\r\nWikipedia";
 	char *msgOut = "HTTP/1.1 200 OK\r\nconTeNt-lengTh: 3\r\nConnection: close\r\n\r\nWik";
 	insertToBuffer(rData, msgIn, b, bOut);
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -136,7 +159,7 @@ assertConnection (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf)
 	char *msgIn = "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nconTeNt-lengTh:3\r\n\r\nWik";
 	char *msgOut = "HTTP/1.1 200 OK\r\nConnection: close\r\nconTeNt-lengTh: 3\r\n\r\nWik";
 	insertToBuffer(rData, msgIn, b, bOut);
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 
 	for (int i = 0; msgOut[i] != 0; i++) {
@@ -146,25 +169,11 @@ assertConnection (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf)
 }
 
 static void
-assertCompleteResponseWithLengthAndTransf (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
-	insertToBuffer(rData, "HTTP/1.1 200 OK\r\nconTeNt-lengTh:3\r\n\r\nWikipedia", b, bOut);
-	rData->withTransf = true;
-	assert(checkResponseInner(rData, b, bOut, bTransf));
-	assert(rData->version == V_1_1);
-	assert(rData->status == 200);
-	assert(rData->bodyLength == 0); // Terminé de leer todo.
-	assert(buffer_read(bTransf) == 'W');
-	assert(buffer_read(bTransf) == 'i');
-	assert(buffer_read(bTransf) == 'k');
-	assert(buffer_read(bTransf) == 0);
-}
-
-static void
 assertCompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	char *msg = "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n11\r\n0123456789 Wikipe\r\n3\r\ndia\r\n0\r\n\r\n";
 	char *msgOut = "HTTP/1.1 200 OK\r\ntransfer-encoDing: chunkEd\r\nConnection: close\r\n\r\n11\r\n0123456789 Wikipe\r\n3\r\ndia\r\n0\r\n\r\n";
 	insertToBuffer(rData, msg, b, bOut);
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -185,7 +194,7 @@ assertCompleteResponseWithChunkAndZeros (ResponseData *rData, buffer *b, buffer 
 
 	insertToBufferWithZeros(rData, msg, b, bOut);
 
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -204,7 +213,7 @@ assertCompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buffer
 	char *msg = "Wikipedia";
 	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n", b, bOut);
 	rData->withTransf = true;
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
 	assert(rData->isChunked);
@@ -220,26 +229,26 @@ static void
 assertIncompleteResponseWithChunk (ResponseData *rData, buffer *b, buffer *bOut, buffer *bTransf) {
 	insertToBuffer(rData, "HTTP/1.", b, bOut);
 	assert(rData->parserState == RES_VERSION);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	writeToBuf("1 20", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	assert(rData->version == V_1_1);
 	assert(rData->parserState == STATUS);
 	writeToBuf("0 OK\r\ntransfer-enc", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	assert(rData->status == 200);
 	assert(rData->parserState == RES_HEADERS);
 	writeToBuf("oDing:c", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == CHUNKED_CHECK);
 	writeToBuf("hunkEd\r\n\r\n", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	assert(rData->isChunked);
 	assert(rData->parserState == BODY_NORMAL);
 	writeToBuf("4\r\nWi", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	writeToBuf("ki\r\n5\r\npedia\r\n0\r\n\r\n", b);
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 }
 
@@ -248,17 +257,17 @@ assertIncompleteResponseWithChunkAndTransf (ResponseData *rData, buffer *b, buff
 	char *msg = "Wikipedia";
 	insertToBuffer(rData, "HTTP/1.1 200 OK\r\ntransfer-encoDing:chunkEd\r\n\r\n", b, bOut);
 	rData->withTransf = true;
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	assert(rData->isChunked);
 	assert(rData->parserState == BODY_TRANSFORMATION);
 	writeToBuf("4\r\nWi", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	writeToBuf("ki\r\n5\r\npedia\r", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	writeToBuf("\n0\r\n\r", b);
-	assert(!checkResponseInner(rData, b, bOut, bTransf));
+	assert(!checkResponse(rData, b, bOut, bTransf));
 	writeToBuf("\n", b);
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 
 	// Al buffer de la transformación espero haber paso solo el contenido de los chunks.
@@ -275,11 +284,11 @@ assertIncompleteResponseWithLengthByByte (ResponseData *rData, buffer *b, buffer
 	int i = 0;
 	while (msg[i] != 0) {
 		// Hago la comparación del paso anterior. Esto lo hago para que no rompa en el último paso.
-		assert(!checkResponseInner(rData, b, bOut, bTransf));
+		assert(!checkResponse(rData, b, bOut, bTransf));
 		buffer_write(b, msg[i]);
 		i++;
 	}
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -296,11 +305,11 @@ assertIncompleteResponseWithLengthByByteAndZeros (ResponseData *rData, buffer *b
 	int i = 0;
 	while (msg[i] != '\1') { // Como tengo 0s en msg pongo un 1 como delimitador.
 		// Hago la comparación del paso anterior. Esto lo hago para que no rompa en el último paso.
-		assert(!checkResponseInner(rData, b, bOut, bTransf));
+		assert(!checkResponse(rData, b, bOut, bTransf));
 		buffer_write(b, msg[i]);
 		i++;
 	}
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -320,11 +329,11 @@ assertIncompleteResponseWithChunkByByte (ResponseData *rData, buffer *b, buffer 
 	int i = 0;
 	while (msg[i] != 0) {
 		// Hago la comparación del paso anterior. Esto lo hago para que no rompa en el último paso.
-		assert(!checkResponseInner(rData, b, bOut, bTransf));
+		assert(!checkResponse(rData, b, bOut, bTransf));
 		buffer_write(b, msg[i]);
 		i++;
 	}
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -339,11 +348,11 @@ assertIncompleteResponseWithChunkByByteAndZeros (ResponseData *rData, buffer *b,
 	int i = 0;
 	while (msg[i] != '\1') { // Como tengo 0s en msg pongo un 1 como delimitador.
 		// Hago la comparación del paso anterior. Esto lo hago para que no rompa en el último paso.
-		assert(!checkResponseInner(rData, b, bOut, bTransf));
+		assert(!checkResponse(rData, b, bOut, bTransf));
 		buffer_write(b, msg[i]);
 		i++;
 	}
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 	assert(rData->version == V_1_1);
 	assert(rData->status == 200);
@@ -360,11 +369,11 @@ assertIncompleteResponseWithChunkAndTransfByByte (ResponseData *rData, buffer *b
 	int i = 0;
 	while (msg[i] != 0) {
 		// Hago la comparación del paso anterior. Esto lo hago para que no rompa en el último paso.
-		assert(!checkResponseInner(rData, b, bOut, bTransf));
+		assert(!checkResponse(rData, b, bOut, bTransf));
 		buffer_write(b, msg[i]);
 		i++;
 	}
-	assert(checkResponseInner(rData, b, bOut, bTransf));
+	assert(checkResponse(rData, b, bOut, bTransf));
 	assert(rData->parserState == RES_FINISHED);
 
 	// Al buffer de la transformación espero haber paso solo el contenido de los chunks.

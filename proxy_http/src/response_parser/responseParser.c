@@ -1,16 +1,12 @@
 #include <responseParser/responseParser.h>
 
 static bool
-checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf);
-static bool
 checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut);
 // Prototipos Start Line
 static bool
 extractHttpVersion (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut);
-static bool
-isValidStatus (const int status);
 // Prototipos Header
 static bool
 checkHeaders (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -23,7 +19,7 @@ checkChunked (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
 checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut);
 static bool
-checkType (ResponseData *rData, buffer *bIn, buffer *bOut);
+checkType (ResponseData *rData, buffer *bIn, buffer *bOut, char *typeCompare);
 // Prototipos Body
 static bool
 extractBody (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -50,34 +46,7 @@ defaultResponseStruct (ResponseData *rData) {
 }
 
 bool
-checkResponse (ResponseData *rd, buffer *bIn, buffer *bOut, buffer *bTransf) {
-	bool success;
-
-	// Reservo suficiente memoria para 1 ResponseData struct.
-	//ResponseData *rData = (ResponseData *) malloc(sizeof(ResponseData));
-
-	//if (rData == NULL) {
-	//	rData->state = RES_ALLOCATION_ERROR;
-	//	fprintf(stderr, "Error: %s\n", strerror(errno));
-	//	return false;
-	//}
-
-	//defaultResponseStruct(rData);
-
-	success = checkResponseInner(rd, bIn, bOut, bTransf);
-
-	//if (success == false) {
-	//	*state = (rData->state == RES_OK ?
-	//		RES_GENERAL_ERROR : rData->state);
-	//}
-
-	//free(rData);
-
-	return success;
-}
-
-static bool
-checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
+checkResponse (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) {
 	bool success = true;
 	bool active = true;
 	
@@ -152,7 +121,9 @@ checkResponseInner (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTra
 				}
 				break;
 			case TYPE_CHECK:
-				if (!checkType(rData, bIn, bOut) && rData->isBufferEmpty) {
+				// A corregir una vez mergeado con la branch de transformations.
+				//if (!checkType(rData, bIn, bOut, config_get("media")) && rData->isBufferEmpty) {
+				if (!checkType(rData, bIn, bOut, "") && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
@@ -262,18 +233,9 @@ static bool extractHttpVersion
 static bool
 extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	if (getNumber(&(rData->status), bIn, bOut, "", &(rData->isBufferEmpty))) {
-		if (isValidStatus(rData->status)) {
-			return true;
-		}
+		return true;
 	}
-
 	return false; // Puede que salga porque el buffer está vacío o porque encontré algo distinto de un número.
-}
-
-static bool
-isValidStatus (const int status) {
-	return true; //TODO mfallone fijar
-    //return status == STATUS_OK || status == STATUS_NO_CONTENT;
 }
 
 /**               FIN DE FUNCIONES DE START LINE                **/
@@ -412,10 +374,45 @@ checkConnection (ResponseData *rData, buffer *bIn, buffer *bOut) {
 	return true;
 }
 
-// A implementar
 static bool
-checkType (ResponseData *rData, buffer *bIn, buffer *bOut) {
-	return true;
+checkType (ResponseData *rData, buffer *bIn, buffer *bOut, char *typeCompare) {
+	bool canRead = true;
+	char c;
+	int i = 0;
+	int length = 0;
+	int myIndex = 0;
+	char myType[MIME_MAX_SIZE] = {0};
+
+	while (length < MIME_MAX_SIZE && (canRead = buffer_can_read(bIn))) {
+		c = PEEK_DOWN_CHAR(bIn);
+		if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == '/') {
+			myType[length++] = c;
+		} else {
+			break;
+		}
+		readAndWrite(bIn, bOut);
+	}
+
+	if (!canRead)  {
+		writeToBufReverse(myType, bIn, length);
+		rData->isBufferEmpty = true;
+		return false;
+	}
+
+	while (typeCompare[i] != 0) {
+		if (typeCompare[i] == ';') { // Delimitador que uso para los media types.
+			myIndex = 0; // Reseteo la búsqueda.
+		} else if (myType[myIndex] == typeCompare[i]) {
+			if ((typeCompare[i] == '/' && typeCompare[i+1] == '*') || typeCompare[i+1] == 0) {
+				rData->withTransf = true;
+				break;
+			}
+			myIndex++;
+		}
+		i++;
+	}
+
+	return rData->withTransf;
 }
 
 /**               FIN DE FUNCIONES DE HEADER                    **/
@@ -424,12 +421,6 @@ checkType (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
-	/** el caso que no sea un 200 y no tenga body */
-	if(!rData->isChunked && rData->bodyLength<0 && rData->status!=200){
-        rData->isBufferEmpty = true;
-        rData->parserState=RES_FINISHED;
-		return false;
-	}
 	// Chunked encoding sobreescribe content length.
 	if (rData->isChunked) {
 		return extractChunkedBody(rData, bIn, bOut);
@@ -439,6 +430,12 @@ extractBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 			return false;
 		}
 		return true;
+	}
+
+	/** Caso en que no tenga un status code de 200 y no tenga body definido */
+	if (rData->status != STATUS_OK) {
+		rData->parserState = RES_FINISHED;
+		return false;
 	}
 
 	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
@@ -490,11 +487,11 @@ extractChunkedBody (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
-	// Chunked encoding sobreescribe content length.
+	// Chunked encoding sobreescribe content length. - El body con transformación lo voy a mandar en formato chunked.
 	if (rData->isChunked) {
 		return extractChunkedBodyTransf(rData, bIn, bTransf);
 	}
-	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
+/**	if (rData->bodyLength >= 0) { // Si bodyLength < 0 es porque nunca agregué un length.
 		if (!writeToTransfBufWithZero(bIn, bTransf, &(rData->bodyLength), &(rData->isBufferEmpty))) {
 			return false;
 		}
@@ -504,6 +501,7 @@ extractBodyTransf (ResponseData *rData, buffer *bIn, buffer *bTransf) {
 	while (buffer_can_read(bIn)) { // Caso en que no tengo ni length o chunked. Corto por cierre de conexión.
 		readAndWriteWithZero(bIn, bTransf, &(rData->isBufferEmpty));
 	}
+*/
 	return false;
 }
 
