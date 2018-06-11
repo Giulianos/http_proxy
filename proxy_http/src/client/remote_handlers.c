@@ -28,7 +28,6 @@ remote_read(struct selector_key * key)
 
           buffer_write_adv(&client->pre_res_parse_buf, read_bytes);
           /** Parse the response. The parser dumps pre_res_parse_buf into post_res_parse_buf */
-//        response_parser_parse(client->response_parser);
           checkResponse(&client->res_data,&client->pre_res_parse_buf,&client->post_res_parse_buf,&client->post_res_parse_buf);
           if(client->res_data.state!=RES_OK){ //TODO remove
               printf("Response parser exploded\n");
@@ -44,15 +43,12 @@ remote_read(struct selector_key * key)
           selector_set_interest(client->selector, client->client_fd, OP_WRITE);
         }
 
-
       } else {
         /** If buffer is full, stop reading from origin */
         selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
       }
       break;
       default: //dummy
-          printf("dummy\r\n");
-
             break;
   }
 
@@ -63,29 +59,26 @@ remote_write(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
     printf("Sending request..\n");
-  switch(client->state) {
-    case SEND_REQ:
       if(buffer_can_read(&client->post_req_parse_buf)) {
-
-        size_t buffer_size;
-        uint8_t * buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
-        ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
-         /** If the read fails, close the connection */
-        if(written_bytes==-1) {
-          printf("Remote write failed! (%s)\n", strerror(errno));
-          if(errno==ECONNREFUSED){
-              char * msg="HTTP/1.1 500\r\nX-CAUSE: ORIGINREFUSE\r\nConnection: close\r\n\r\n";
-              writeToBuf(msg,&client->post_res_parse_buf);
-              client->state=READ_RESP;
+          size_t buffer_size;
+          uint8_t *buffer_ptr = buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);
+          ssize_t written_bytes = write(client->origin_fd, buffer_ptr, buffer_size);
+          /** If the read fails, close the connection */
+          if (written_bytes == -1) {
+              printf("Remote write failed! (%s)\n", strerror(errno));
+              if (errno == ECONNREFUSED) {
+                  char *msg = "HTTP/1.1 500\r\nX-CAUSE: ORIGINREFUSE\r\nConnection: close\r\n\r\n";
+                  writeToBuf(msg, &client->post_res_parse_buf);
+                  client->state = READ_RESP;
+              }
+              selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+              selector_unregister_fd(client->selector, client->origin_fd);
+              return;
           }
-          selector_set_interest(client->selector, client->client_fd, OP_WRITE);
-          selector_unregister_fd(client->selector,client->origin_fd);
-          return;
-        }
 
-        buffer_read_adv(&client->post_req_parse_buf, written_bytes);
-        /** As i read from the buffer, read from the client */
-            selector_set_interest(client->selector, client->client_fd, OP_READ);
+          buffer_read_adv(&client->post_req_parse_buf, written_bytes);
+          /** As i read from the buffer, read from the client */
+          selector_set_interest(client->selector, client->client_fd, OP_READ);
       } else if(client->request_complete) {
         /** If the request is complete, write to the client and read from origin */
         selector_set_interest(client->selector, client->origin_fd, OP_READ);
@@ -95,11 +88,6 @@ remote_write(struct selector_key * key)
         /** If buffer is empty, stop writing to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_NOOP);
       }
-      break;
-  default: //dummy
-        printf("dummy\r\n");
-          break;
-  }
 }
 
 void
@@ -117,5 +105,4 @@ remote_close(struct selector_key * key)
 //  shutdown(client->origin_fd,SHUT_RDWR);
   close(client->origin_fd);
   client->origin_fd=-1;
-//  client->state = NO_ORIGIN;
 }

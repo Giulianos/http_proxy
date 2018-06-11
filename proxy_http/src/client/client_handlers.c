@@ -28,12 +28,12 @@ client_block(struct selector_key * key);
 void
 client_close(struct selector_key * key);
 
-fd_handler client_handlers2 = {
-        .handle_read = client_read,
-        .handle_write = client_write,
-        .handle_close = client_close,
-        .handle_block = client_block,
-};
+//fd_handler client_handlers2 = {
+//        .handle_read = client_read,
+//        .handle_write = client_write,
+//        .handle_close = client_close,
+//        .handle_block = client_block,
+//};
 
 
 void
@@ -41,6 +41,7 @@ client_read(struct selector_key * key)
 {
   client_t client = GET_CLIENT(key);
   switch(client->state) {
+      default:
     case NO_ORIGIN: //solo entra aca
       if(buffer_can_write(&client->pre_req_parse_buf)) {
         /** Get the buffer pointer and space available */
@@ -49,8 +50,8 @@ client_read(struct selector_key * key)
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         /** If the read fails, close the connection */
         if(read_bytes==-1){
-            printf("end reading client\n");
-              selector_unregister_fd(client->selector,client->client_fd);
+            printf("error reading client\n");
+            selector_unregister_fd(client->selector,client->client_fd);
         }
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
@@ -63,36 +64,37 @@ client_read(struct selector_key * key)
           printf("Invalid request by client\n");
           return;
         }
-	readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
+	    readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
       } else {
         /** If buffer is full, stop reading from client */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
       }
       break;
 
-    case SEND_REQ:
-      if(buffer_can_write(&client->pre_req_parse_buf)) {
-        /** Get the buffer pointer and space available */
-        size_t buffer_space;
-        uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
-        ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
-        buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
-        /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
-        client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
-                                                &client->post_req_parse_buf, client_set_host, client);
-
-	readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
-        client->state= (client_state_t) client->req_data.state;
-
-          /** As i wrote to the buffer, write to origin */
-        selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
-      } else {
-        /** If buffer is full, stop reading from client */
-        selector_set_interest(client->selector, client->client_fd, OP_NOOP);
-      }
-      break;
-      default: //dummy
-          break;
+//    case SEND_REQ:
+//      if(buffer_can_write(&client->pre_req_parse_buf)) {
+//        /** Get the buffer pointer and space available */
+//        size_t buffer_space;
+//        uint8_t * buffer_ptr = buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
+//        ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
+//        buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
+//        /** Parse the request. The parser dumps pre_req_parse_buf into post_req_parse_buf */
+//        client->request_complete = checkRequest(&client->req_data, &client->pre_req_parse_buf,
+//                                                &client->post_req_parse_buf, client_set_host, client);
+//
+//	readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
+//        client->state= (client_state_t) client->req_data.state;
+//
+//          /** As i wrote to the buffer, write to origin */
+//        selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
+//      } else {
+//        /** If buffer is full, stop reading from client */
+//        selector_set_interest(client->selector, client->client_fd, OP_NOOP);
+//      }
+//      break;
+//      case READ_RESP:
+//          readAndWriteAllWithZero(&client->pre_req_parse_buf, &client->post_req_parse_buf);
+//          break;
   }
 }
 
@@ -136,8 +138,6 @@ client_block(struct selector_key * key)
   int status;
   int origin_socket;
 
-//  struct addrinfo * current = res;
-//  char addr_str[50];
 
   /** Connect to remote host */
     if(res== NULL){
@@ -200,7 +200,6 @@ client_block(struct selector_key * key)
         printf("Fail to register in select");
         exit(13);
       }
-
       st = selector_register(key->s, client->origin_fd, &remote_handlers, OP_WRITE, (void*)client);
       if(SELECTOR_SUCCESS != st) {
           printf("Fail to register in select");
