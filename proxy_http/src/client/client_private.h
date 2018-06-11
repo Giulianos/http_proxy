@@ -23,12 +23,6 @@ enum client_state {
 
 typedef enum client_state client_state_t;
 
-struct host_details {
-    unsigned int port;
-    char fqdn[MAX_DOMAIN_NAME_LENGTH+1];
-    struct addrinfo * resolved;
-};
-
 struct client_cdt {
     /** Client state */
     client_state_t state;
@@ -53,20 +47,13 @@ struct client_cdt {
     int transf_out_fd;
     fd_selector selector;
 
-    /** Request parser */
-    requestState request_parser_state;
-
-    //requestdata
-    RequestData req_data;
-    ResponseData res_data;
-
     struct log* log;
-#ifdef DUMMY_PARSERS
+
+    /** Request parser */
     request_parser_t request_parser;
-#endif
 
     /** Response parser */
-    response_parser_t response_parser;
+    ResponseData res_data;
 
     /** Request/response parsing state */
     bool request_complete;
@@ -76,7 +63,9 @@ struct client_cdt {
     bool shouldTransform;
 
     /** Request info */
-    struct host_details host;
+    char host[MAX_DOMAIN_NAME_LENGTH+1];
+    unsigned int port;
+    struct addrinfo * resolved;
 
     /** Connection time saving */
     connection_time_t connection_time;
@@ -93,12 +82,15 @@ void
 client_terminate(client_t client);
 
 void
-client_set_host(const char * host, int port, void * data);
+client_set_host(host_details_t host, void* data);
 
 ssize_t
 dump_chunk_from_fd(int src_fd, buffer * dst_buffer);
 
 ssize_t
 write_empty_chunk(buffer * dst_buffer);
+
+void
+request_ended(void* data);
 
 #endif

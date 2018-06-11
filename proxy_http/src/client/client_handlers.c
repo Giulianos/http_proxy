@@ -25,7 +25,7 @@ client_read(struct selector_key* key)
 {
   client_t client = GET_CLIENT(key);
   switch (client->state) {
-    case NO_ORIGIN: // solo entra aca
+    case NO_ORIGIN:
       if (buffer_can_write(&client->pre_req_parse_buf)) {
         /** Get the buffer pointer and space available */
         size_t buffer_space;
@@ -33,29 +33,17 @@ client_read(struct selector_key* key)
           buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         /** If the read fails, close the connection */
-        if (read_bytes == -1) {
+        if (read_bytes < 0) {
           selector_unregister_fd(client->selector, client->client_fd);
         }
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into
          * post_req_parse_buf */
-        if (client->req_data.parserState != FINISHED)
-          client->request_complete =
-            checkRequest(&client->req_data, &client->pre_req_parse_buf,
-                         &client->post_req_parse_buf, client_set_host, client);
-        if (client->req_data.state != OK) {
-          /** if the parser fails, close the connection */
-          selector_unregister_fd(client->selector, client->client_fd);
-          printf("Invalid request by client\n");
-          return;
-        }
-        while (
-          readAndWrite(&client->pre_req_parse_buf, &client->post_req_parse_buf))
-          ; // TODO mfallone must fix
-        // TODO check de 0x00 value
+        request_parser_parse (client->request_parser);
 
       } else {
         /** If buffer is full, stop reading from client */
+        /** TODO: send response with error request too long */
         selector_set_interest(client->selector, client->client_fd, OP_NOOP);
       }
       break;
@@ -70,14 +58,7 @@ client_read(struct selector_key* key)
         buffer_write_adv(&client->pre_req_parse_buf, read_bytes);
         /** Parse the request. The parser dumps pre_req_parse_buf into
          * post_req_parse_buf */
-        client->request_complete =
-          checkRequest(&client->req_data, &client->pre_req_parse_buf,
-                       &client->post_req_parse_buf, client_set_host, client);
-        while (
-          readAndWrite(&client->pre_req_parse_buf, &client->post_req_parse_buf))
-          ; // TODO mfallone must fix
-        // TODO check de 0x00 value
-        client->state = (client_state_t)client->req_data.state;
+         request_parser_parse (client->request_parser);
 
         /** As i wrote to the buffer, write to origin */
         selector_set_interest(client->selector, client->origin_fd, OP_WRITE);
@@ -140,16 +121,13 @@ void
 client_block(struct selector_key* key)
 {
   client_t client = GET_CLIENT(key);
-  struct addrinfo* res = client->host.resolved;
+  struct addrinfo* res = client->resolved;
   int status;
   int origin_socket;
 
-  //  struct addrinfo * current = res;
-  //  char addr_str[50];
-
   /** Connect to remote host */
   if (res == NULL) {
-    printf("I cant resolve this domain %s\n", client->host.fqdn);
+    printf("I cant resolve this domain %s\n", client->host);
     selector_unregister_fd(client->selector, client->client_fd);
     return;
   }
@@ -175,11 +153,11 @@ client_block(struct selector_key* key)
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
 
-  /** Set port accordingly, now hardcoded */
+  /** Set port accordingly */
   if (res->ai_family == AF_INET) {
-    ((struct sockaddr_in*)res->ai_addr)->sin_port = htons(client->host.port);
+    ((struct sockaddr_in*)res->ai_addr)->sin_port = htons(client->port);
   } else if (res->ai_family == AF_INET6) {
-    ((struct sockaddr_in6*)res->ai_addr)->sin6_port = htons(client->host.port);
+    ((struct sockaddr_in6*)res->ai_addr)->sin6_port = htons(client->port);
   }
 
   /** Non-blocking connect */
