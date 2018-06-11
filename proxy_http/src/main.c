@@ -197,9 +197,8 @@ main(const int argc, const char * argv[])
     }
 
     q_init(admin_socket, selector);
-  config_create("name0", "value0");
-  config_create("name1", "value1");
-  config_create("name2", "value2");
+    initialize_configurations("text/plain", "cat");
+
     for(;;) {
         if(q_is_empty()) {
             selector_set_interest(selector, admin_socket, OP_READ);
@@ -250,4 +249,20 @@ listen_read_handler(struct selector_key *key)
     selector_fd_set_nio(client_socket);
     selector_register(key->s, client_socket, &client_handlers, OP_READ, client);
 
+}
+
+int
+initialize_configurations(const char * media_types, const char * cmd)
+{
+  if(media_types != NULL && cmd != NULL) {
+    config_create("media_types", media_types);
+    config_create("cmd", cmd);
+  } else if(cmd != NULL) {
+    config_create("media_types", "");
+    config_create("cmd", cmd);
+  } else if(media_types != NULL) {
+    return -1;
+  }
+  config_create("buffers_size", "8192");
+  return 1;
 }

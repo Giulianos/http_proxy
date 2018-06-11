@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#define MAX_NAME 10
+#define MAX_NAME 20
 #define MAX_CONFIG 100
 
 #define PREALLOC_QUANTITY 10
@@ -89,7 +89,7 @@ config_get_size()
 }
 
 int
-config_initialization(const char * file_name)
+config_initialize_from_file(const char * file_name)
 {
   FILE * config_file = fopen(file_name, "r");
   int c;

@@ -2,8 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-/** TODO (Config): get name of the program from config module */
+#include <config/config.h>
 
 /**
  *
@@ -44,8 +43,11 @@ transformations_new(int * fd_in, int * fd_out)
       dup2(pipe_in[0], STDIN_FILENO);
       dup2(pipe_out[1], STDOUT_FILENO);
 
-      /** TODO: transf should be gotten from config module */
-      if(-1 == execl("/bin/sh", "sh", "-c", "sed 's/google/esto_decia_google/'", (char *) 0)) {
+      char * cmd = config_get("cmd");
+      if(cmd == NULL) {
+        return -1;
+      }
+      if(-1 == execl("/bin/sh", "sh", "-c", cmd, (char *) 0)) {
         close(pipe_in[0]);
         close(pipe_out[1]);
         return -1;

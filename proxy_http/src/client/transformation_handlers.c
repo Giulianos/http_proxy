@@ -38,8 +38,7 @@ transf_write(struct selector_key * key)
     ssize_t written_bytes =
         write(client->transf_in_fd, buffer_ptr, buffer_size);
     if(written_bytes < 0) {
-      printf("Error writing to transformation program\n");
-      selector_unregister_fd (client->selector, client->client_fd);
+      selector_unregister_fd (client->selector, client->transf_in_fd);
     } else if(written_bytes > 0) {
       buffer_read_adv (&client->pre_transf_buf, written_bytes);
     } else {

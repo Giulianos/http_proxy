@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <transformations/transformations.h>
+#include <config/config.h>
 
 static void* request_resolv_blocking(void* data);
 
@@ -34,9 +35,6 @@ fd_handler transf_out_handlers = {
 client_t
 client_new(const struct client_config* config)
 {
-  /** TODO:
-  *  - create buffers with sizes from config module
-  */
   client_t client = (client_t)malloc(sizeof(struct client_cdt));
 
   client->state = NO_ORIGIN;
@@ -59,26 +57,24 @@ client_new(const struct client_config* config)
   defaultRequestStruct(&client->req_data);
   defaultResponseStruct(&client->res_data);
 
-  // TODO hacerlos como define
-  int BUFFER_SIZE = 8192;   // A pasar a .h como macro.
-  int RESERVED_SPACE = 255; // En principio, tomo como espacio reservado lo
-                            // máximo que puede ocupar el host.
+  size_t buffer_size = (size_t)atoi(config_get("buffers_size"));
+  size_t reserved_space = 255;
 
   /** Initialize I/O buffers */
-  client->pre_req_parse_buf_mem = malloc(BUFFER_SIZE);
-  buffer_init_r(&client->pre_req_parse_buf, RESERVED_SPACE, BUFFER_SIZE,
+  client->pre_req_parse_buf_mem = malloc(buffer_size);
+  buffer_init_r(&client->pre_req_parse_buf, reserved_space, buffer_size,
                 client->pre_req_parse_buf_mem);
-  client->post_req_parse_buf_mem = malloc(BUFFER_SIZE);
-  buffer_init_r(&client->post_req_parse_buf, RESERVED_SPACE, BUFFER_SIZE,
+  client->post_req_parse_buf_mem = malloc(buffer_size);
+  buffer_init_r(&client->post_req_parse_buf, reserved_space, buffer_size,
                 client->post_req_parse_buf_mem);
-  client->pre_res_parse_buf_mem = malloc(BUFFER_SIZE);
-  buffer_init_r(&client->pre_res_parse_buf, RESERVED_SPACE, BUFFER_SIZE,
+  client->pre_res_parse_buf_mem = malloc(buffer_size);
+  buffer_init_r(&client->pre_res_parse_buf, reserved_space, buffer_size,
                 client->pre_res_parse_buf_mem);
-  client->post_res_parse_buf_mem = malloc(BUFFER_SIZE);
-  buffer_init_r(&client->post_res_parse_buf, RESERVED_SPACE, BUFFER_SIZE,
+  client->post_res_parse_buf_mem = malloc(buffer_size);
+  buffer_init_r(&client->post_res_parse_buf, reserved_space, buffer_size,
                 client->post_res_parse_buf_mem);
-  client->pre_transf_buf_mem = malloc(BUFFER_SIZE);
-  buffer_init_r(&client->pre_transf_buf, RESERVED_SPACE, BUFFER_SIZE,
+  client->pre_transf_buf_mem = malloc(buffer_size);
+  buffer_init_r(&client->pre_transf_buf, reserved_space, buffer_size,
                 client->pre_transf_buf_mem);
 
 /** Initialize request parser */

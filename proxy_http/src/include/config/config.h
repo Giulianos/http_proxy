@@ -3,11 +3,12 @@
 
 
 /**
+ * @param file_name
  * initializes the configurations reading from a file
+ * @return
  */
-
 int
-config_initialization(const char * file_name);
+config_initialize_from_file(const char * file_name);
 
 /**
  * recieves a name that represents a configuration and a value to set

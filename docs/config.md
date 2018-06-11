@@ -6,9 +6,14 @@ Este modulo se encarga de almacenar configuraciones.
 - **configurations**: Tiene todas las configuraciones que fueron seteadas.
 - **MAX_CONFIG**: Se soporta hasta un maximo de MAX_CONFIG por lo que se cuenta con un array *configurations* de este tamano.
 - **MAX_NAME**: Se soporta hasta un maximo de caracteres en el configuration name MAX_NAME. En caso de que pasen un name con mayor tamano, si coinciden en MAX_NAME, tomara que se trata de este mismo.
-- **NAME**: Acepta letras, numeros, '_', '-'
+- **NAME**: Acepta letras, numeros, '\_', '-'
 
-## Config Initialization
+## Configuraciones soportadas
+- **media_types:** Las respuestas cuyos Content-Type coincidan con alguno de los listados en esta configuracion, van a ser transformadas.
+- **buffers_size:** Tamano de los buffers de I/O utilizados en la atencion de los clientes.
+- **cmd:** Comando a ejecutar para realizar las transformaciones.
+
+## Config Initialization From File
 
 Levanta de un archivo configuraciones seteadas default para que el proxy funcione correctamente. El formato del archivo debe ser:
 ```
