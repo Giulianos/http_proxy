@@ -1,1 +1,1 @@
-add_library(RequestParser request_parser.c)
+add_library(RequestParser request_parser.c request_parser_utils.c request_parser_private.h)

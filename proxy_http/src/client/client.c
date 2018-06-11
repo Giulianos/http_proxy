@@ -81,7 +81,7 @@ client_new(const struct client_config* config)
       .out_buffer = &client->post_req_parse_buf,
       .got_host_callback = client_set_host,
       .request_ended_callback = request_ended,
-      .callbacks_info = NULL
+      .callbacks_info = (void *)client
   };
   client->request_parser = request_parser_new(&req_parser_config);
 
@@ -94,27 +94,34 @@ client_new(const struct client_config* config)
 void
 client_free_resources(client_t client)
 {
-
+  /** Unregister origin */
   if (client->origin_fd != -1) {
-    close(client->origin_fd);
     selector_unregister_fd(client->selector, client->origin_fd);
-    client->origin_fd = -1;
   }
 
+  /** Close client */
   close(client->client_fd);
-  free(client->pre_req_parse_buf_mem);
-  free(client->post_req_parse_buf_mem);
-  free(client->pre_res_parse_buf_mem);
-  free(client->post_res_parse_buf_mem);
+  client->client_fd = -1;
 
-  /**
-   * TODO:
-   * Resources that should be freed:
-   * 1) Parsers
-   * 2) Buffers
-   * 3) Resolved host
-   * 4) Client CDT
-   */
+  /** Destroy parsers */
+  request_parser_destroy (client->request_parser);
+
+  /** Free buffers */
+  if(client->pre_req_parse_buf_mem != NULL)
+    free(client->pre_req_parse_buf_mem);
+  if(client->post_req_parse_buf_mem != NULL)
+    free(client->post_req_parse_buf_mem);
+  if(client->pre_res_parse_buf_mem != NULL)
+    free(client->pre_res_parse_buf_mem);
+  if(client->post_req_parse_buf_mem != NULL)
+    free(client->post_res_parse_buf_mem);
+  if(client->pre_transf_buf_mem != NULL)
+    free(client->post_res_parse_buf_mem);
+
+  if(client->resolved != NULL)
+    freeaddrinfo (client->resolved);
+
+  free(client);
 }
 
 void
@@ -132,7 +139,7 @@ client_set_host(host_details_t host, void* data)
 
   client_t client = (client_t)data;
   pthread_t host_resolv_thread;
-  log_sendf(client->log, "Resolving: %s...", host);
+  log_sendf(client->log, "Resolving: %s...", host->host);
 
   /** Check if the length of the host is valid */
   if (strnlen(host->host, MAX_DOMAIN_NAME_LENGTH + 1) <= MAX_DOMAIN_NAME_LENGTH) {

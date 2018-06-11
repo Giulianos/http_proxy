@@ -75,6 +75,7 @@ request_parser_new(request_parser_config_t config)
   parser->lambda_transition = false;
   parser->host_found = false;
   parser->done = false;
+  parser->host.host = NULL;
   parser->error = REQUEST_PARSER_NO_ERROR;
   parser->got_host_callback = config->got_host_callback;
   parser->request_ended_callback = config->request_ended_callback;
@@ -311,6 +312,9 @@ request_parser_destroy(request_parser_t parser)
   }
   if(parser->header_value != NULL) {
       free (parser->header_value);
+  }
+  if(parser->host.host != NULL) {
+    free (parser->host.host);
   }
 
   free (parser);

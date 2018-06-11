@@ -127,7 +127,6 @@ client_block(struct selector_key* key)
 
   /** Connect to remote host */
   if (res == NULL) {
-    printf("I cant resolve this domain %s\n", client->host);
     selector_unregister_fd(client->selector, client->client_fd);
     return;
   }
@@ -147,8 +146,6 @@ client_block(struct selector_key* key)
    */
 
   /** Register origin fd to write */
-
-  printf("Trying connect...\n");
   selector_fd_set_nio(origin_socket);
   client->state = SEND_REQ;
   client->origin_fd = origin_socket;
@@ -161,7 +158,6 @@ client_block(struct selector_key* key)
   }
 
   /** Non-blocking connect */
-
   status = connect(origin_socket, res->ai_addr, res->ai_addrlen);
 
   if (status == 0) {
@@ -190,7 +186,6 @@ client_close(struct selector_key* key)
 {
   client_t client = GET_CLIENT(key);
 
-  printf("Bye!\n");
   metric_close_connection(client->connection_time);
   client_free_resources(client);
 }
