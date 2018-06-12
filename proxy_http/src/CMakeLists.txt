@@ -14,6 +14,7 @@ add_subdirectory(metric)
 add_subdirectory(admin_handlers)
 add_subdirectory(admin_actions)
 add_subdirectory(msg_queue)
+add_subdirectory(argument)
 
 find_package (Threads)
 include(FindSCTP.cmake)
@@ -42,6 +43,7 @@ target_link_libraries(proxy_http MyParserUtils)
 target_link_libraries(proxy_http RequestParser)
 target_link_libraries(proxy_http ResponseParser)
 target_link_libraries(proxy_http Logger)
+target_link_libraries(proxy_http Argument)
 target_link_libraries(proxy_http ${CMAKE_THREAD_LIBS_INIT})
 
 # Tests

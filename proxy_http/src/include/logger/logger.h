@@ -23,14 +23,19 @@ struct log{
     void * log_buf_mem;
     fd_selector selector;
 };
-
+/** initialize the log structure and create the thread */
+int log_start(struct log* l,fd_selector sel);
+/**logger handle */
 void log_close(struct selector_key * key);
+/**logger handle */
 void log_write(struct selector_key * key);
 
-
-int log_start(struct log* l,fd_selector sel);
-
+/**
+* @param log structure which will going to write the message
+* @param string of the message
+*/
 void log_send(struct log* l,char *s);
+/**log_send with printf-like params */
 void log_sendf(struct log* l,const char *fmt, ...);
 
 #endif //PROXY_HTTP_LOGGER_H

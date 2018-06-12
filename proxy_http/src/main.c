@@ -16,6 +16,8 @@
 #include <msg_queue/msg_queue.h>
 #include <admin_handlers/admin_handlers.h>
 #include <config/config.h>
+#include <argument/argument.h>
+#include <strings.h>
 #include "client/remote_handlers.h"
 #include "client/client_private.h"
 
@@ -28,13 +30,13 @@ listen_read_handler(struct selector_key *key);
 struct log l;
 
 int
-main(const int argc, const char * argv[])
+main(const int argc, const char ** argv)
 {
 
-    unsigned int     port     = 8080;
     const char       *err_msg = NULL;
     selector_status  ss       = SELECTOR_SUCCESS;
     fd_selector      selector = NULL;
+    int              port     = 8080;
 
     /** sctp server variables */
     int admin_socket, msg_flags;
@@ -43,11 +45,20 @@ main(const int argc, const char * argv[])
     struct sctp_sndrcvinfo sri;
     struct sctp_event_subscribe evnts;
 
+    /** config init */
+    initialize_configurations("text/plain", "cat");
+    config_create("proxy_port", "8080");
+    config_create("mgmt_port", "9090");
+
+    argument_get(argc,argv);
+
+    /** proxy socket */
     struct sockaddr_in6 addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin6_family      = AF_INET6;
     addr.sin6_addr = in6addr_any;
-    addr.sin6_port        = htons(port);
+//    addr.sin6_port        = htons(port);
+    addr.sin6_port        = htons((uint16_t) atoi(config_get("proxy_port")));
 
     /** admin_socket initialization */
 
@@ -58,12 +69,12 @@ main(const int argc, const char * argv[])
         return 1;
     }
 
-
     bzero(&serveraddr, sizeof(serveraddr));
 
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons(SERVPORT);
+//    serveraddr.sin_port=htons((uint16_t) atoi(config_get("mgmt_port")));
 
     return_value = bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
     if(return_value < 0) {
@@ -197,7 +208,6 @@ main(const int argc, const char * argv[])
     }
 
     q_init(admin_socket, selector);
-    initialize_configurations("text/plain", "cat");
 
     for(;;) {
         if(q_is_empty()) {
