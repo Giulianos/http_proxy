@@ -8,7 +8,6 @@
 #include <memory.h>
 #include <netdb.h>
 #include <pthread.h>
-#include <requestParser/requestParser.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -53,8 +52,6 @@ client_new(const struct client_config* config)
     selector_register (client->selector, client->transf_out_fd, &transf_out_handlers, OP_NOOP, client);
   }
 
-  defaultResponseStruct(&client->res_data);
-
   size_t buffer_size = (size_t)atoi(config_get("buffers_size"));
   size_t reserved_space = 255;
 
@@ -75,7 +72,7 @@ client_new(const struct client_config* config)
   buffer_init_r(&client->pre_transf_buf, reserved_space, buffer_size,
                 client->pre_transf_buf_mem);
 
-/** Initialize request parser */
+  /** Initialize request parser */
   struct request_parser_config req_parser_config = {
       .in_buffer =  &client->pre_req_parse_buf,
       .out_buffer = &client->post_req_parse_buf,
@@ -84,6 +81,16 @@ client_new(const struct client_config* config)
       .callbacks_info = (void *)client
   };
   client->request_parser = request_parser_new(&req_parser_config);
+
+  /** Initialize response parser */
+  struct response_parser_config res_parser_config = {
+      .in_buffer =  &client->pre_res_parse_buf,
+      .out_buffer = &client->post_res_parse_buf,
+      .trans_buffer = &client->pre_transf_buf,
+      .response_ended_callback = response_ended,
+      .callbacks_info = (void *)client
+  };
+  client->response_parser = response_parser_new(&res_parser_config);
 
   /** add client's metrics */
   client->connection_time = metric_new_connection();
@@ -116,21 +123,12 @@ client_free_resources(client_t client)
   if(client->post_req_parse_buf_mem != NULL)
     free(client->post_res_parse_buf_mem);
   if(client->pre_transf_buf_mem != NULL)
-    free(client->post_res_parse_buf_mem);
+    free(client->pre_transf_buf_mem);
 
   if(client->resolved != NULL)
     freeaddrinfo (client->resolved);
 
   free(client);
-}
-
-void
-client_terminate(client_t client)
-{
-  close(client->client_fd);
-  selector_unregister_fd(client->selector, client->client_fd);
-
-  client_free_resources(client);
 }
 
 void
@@ -162,6 +160,14 @@ request_ended(void* data)
   client_t client = (client_t)data;
 
   client->request_complete = true;
+}
+
+void
+response_ended(void* data)
+{
+  client_t client = (client_t)data;
+  dprintf(STDERR_FILENO, "[CLIENT_INFO]Response ended!\n");
+  client->response_complete = true;
 }
 
 static void*

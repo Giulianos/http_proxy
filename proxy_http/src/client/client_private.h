@@ -5,10 +5,8 @@
 #include <limits/limits.h>
 #include <request_parser/request_parser.h>
 #include <response_parser/response_parser.h>
-#include <requestParser/requestParser.h>
 #include <selector/selector.h>
 #include <client/client.h>
-#include <responseParser/responseParser.h>
 #include <metric/metric.h>
 
 #define GET_CLIENT(key) (client_t)((key)->data)
@@ -53,7 +51,7 @@ struct client_cdt {
     request_parser_t request_parser;
 
     /** Response parser */
-    ResponseData res_data;
+    response_parser_t response_parser;
 
     /** Request/response parsing state */
     bool request_complete;
@@ -79,9 +77,6 @@ void
 client_free_resources(client_t client);
 
 void
-client_terminate(client_t client);
-
-void
 client_set_host(host_details_t host, void* data);
 
 ssize_t
@@ -92,5 +87,8 @@ write_empty_chunk(buffer * dst_buffer);
 
 void
 request_ended(void* data);
+
+void
+response_ended(void* data);
 
 #endif

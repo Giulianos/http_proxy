@@ -1,6 +1,3 @@
 #add_library(ResponseParser dummy_response_parser.c)
-add_library(ResponseParser responseParser.c)
+add_library(ResponseParser response_parser.c response_parser_utils.c)
 
-# Dependecies
-# target_link_libraries(ResponseParser DependencyName)
-target_link_libraries(ResponseParser MyParserUtils)

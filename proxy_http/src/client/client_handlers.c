@@ -85,7 +85,7 @@ client_write(struct selector_key* key)
         printf("Sending response (size %d)...\n", (int)buffer_size);
         ssize_t written_bytes =
           write(client->client_fd, buffer_ptr, buffer_size);
-        if (written_bytes == -1) {
+        if (written_bytes < 0) {
           selector_unregister_fd(client->selector, client->client_fd);
           return;
         }
@@ -94,15 +94,14 @@ client_write(struct selector_key* key)
         metric_add_transfered_bytes((double)written_bytes);
 
         buffer_read_adv(&client->post_res_parse_buf, written_bytes);
+
         /** As i read from the buffer, read from the origin or transf */
-        if(client->shouldTransform) {
+        if(client->shouldTransform && client->transf_out_fd != -1) {
           selector_set_interest (client->selector, client->transf_out_fd, OP_READ);
-        } else {
+        } else if(client->origin_fd != -1) {
           selector_set_interest(client->selector, client->origin_fd, OP_READ);
         }
-      } else if (client->origin_fd ==
-                  -1 && !client->shouldTransform) { /** when the buffer is empty and the
-                            remote connection is closed */
+      } else if (client->response_complete) {
         printf("client FINISHED\n");
         selector_unregister_fd(client->selector, client->client_fd);
         return;
@@ -185,7 +184,7 @@ void
 client_close(struct selector_key* key)
 {
   client_t client = GET_CLIENT(key);
-
+  printf("Bye!\n");
   metric_close_connection(client->connection_time);
   client_free_resources(client);
 }

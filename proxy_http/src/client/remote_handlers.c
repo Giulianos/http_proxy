@@ -2,6 +2,7 @@
 #include "client_private.h"
 #include <client/client.h>
 #include <errno.h>
+#include <stdio.h>
 #include <logger/logger.h>
 #include <memory.h>
 #include <netdb.h>
@@ -29,19 +30,7 @@ remote_read(struct selector_key* key)
           buffer_write_adv(&client->pre_res_parse_buf, read_bytes);
           /** Parse the response. The parser dumps pre_res_parse_buf into
            * post_res_parse_buf */
-          checkResponse(&client->res_data, &client->pre_res_parse_buf,
-                        &client->post_res_parse_buf, &client->pre_transf_buf);
-
-          if (client->res_data.state != RES_OK) { // TODO remove
-            printf("Response parser exploded\n");
-            exit(42);
-          }
-          if (client->res_data.parserState == RES_FINISHED) {
-            printf("remote FINISHED\n");
-            selector_unregister_fd(client->selector, client->origin_fd);
-            selector_set_interest(client->selector, client->client_fd,
-                                  OP_WRITE);
-          }
+          response_parser_parse(client->response_parser);
 
           /** Check if it's something to transform */
           if(client->shouldTransform && buffer_can_read (&client->pre_transf_buf)) {
@@ -55,6 +44,8 @@ remote_read(struct selector_key* key)
             selector_set_interest(client->selector, client->client_fd, OP_WRITE);
           }
 
+        } else {
+          selector_unregister_fd(client->selector, client->origin_fd);
         }
 
       } else {

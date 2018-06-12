@@ -31,7 +31,6 @@ transf_write(struct selector_key * key)
   client_t client = GET_CLIENT (key);
 
   if(buffer_can_read (&client->pre_transf_buf)) {
-    printf("Transforming...\n");
     size_t buffer_size;
     uint8_t* buffer_ptr =
         buffer_read_ptr(&client->pre_transf_buf, &buffer_size);
@@ -44,7 +43,7 @@ transf_write(struct selector_key * key)
     } else {
       selector_unregister_fd (client->selector, client->transf_in_fd);
     }
-  } else if(client->res_data.parserState == RES_FINISHED) {
+  } else if(client->response_complete) {
     selector_unregister_fd (client->selector, client->transf_in_fd);
   } else {
     /** If buffer is empty, stop writing */
