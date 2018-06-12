@@ -74,7 +74,7 @@ main(const int argc, const char ** argv)
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons(SERVPORT);
-//    serveraddr.sin_port=htons((uint16_t) atoi(config_get("mgmt_port")));
+    serveraddr.sin_port=htons((uint16_t) atoi(config_get("mgmt_port")));
 
     return_value = bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
     if(return_value < 0) {

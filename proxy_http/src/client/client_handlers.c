@@ -122,11 +122,11 @@ client_write(struct selector_key* key)
       } else if (client->origin_fd ==
                   -1 && !client->shouldTransform) { /** when the buffer is empty and the
                             remote connection is closed */
-        printf("client FINISHED\n");
+        printf("client FINISHED no trans\n");
         selector_unregister_fd(client->selector, client->client_fd);
         return;
       } else if (client->shouldTransform && client->transf_out_fd == -1) {
-        printf("client FINISHED\n");
+        printf("client FINISHED trans\n");
         selector_unregister_fd(client->selector, client->client_fd);
         return;
       }

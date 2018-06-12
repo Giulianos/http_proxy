@@ -4,3 +4,4 @@ add_library(ResponseParser responseParser.c)
 # Dependecies
 # target_link_libraries(ResponseParser DependencyName)
 target_link_libraries(ResponseParser MyParserUtils)
+target_link_libraries(ResponseParser Config)

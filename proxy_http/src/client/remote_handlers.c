@@ -31,10 +31,12 @@ remote_read(struct selector_key* key)
            * post_res_parse_buf */
           checkResponse(&client->res_data, &client->pre_res_parse_buf,
                         &client->post_res_parse_buf, &client->pre_transf_buf);
+          if(client->res_data.withTransf){
+              client->shouldTransform=true;
+          }
 
           if (client->res_data.state != RES_OK) { // TODO remove
             printf("Response parser exploded\n");
-            exit(42);
           }
           if (client->res_data.parserState == RES_FINISHED) {
             printf("remote FINISHED\n");

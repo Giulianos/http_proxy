@@ -1,4 +1,5 @@
 #include <responseParser/responseParser.h>
+#include <config/config.h>
 
 static bool
 checkSpaces (ResponseData *rData, buffer *bIn, buffer *bOut);
@@ -123,7 +124,7 @@ checkResponse (ResponseData *rData, buffer *bIn, buffer *bOut, buffer *bTransf) 
 			case TYPE_CHECK:
 				// A corregir una vez mergeado con la branch de transformations.
 				//if (!checkType(rData, bIn, bOut, config_get("media")) && rData->isBufferEmpty) {
-				if (!checkType(rData, bIn, bOut, "") && rData->isBufferEmpty) {
+				if (!checkType(rData, bIn, bOut, config_get("media_types")) && rData->isBufferEmpty) {
 					success = false;
 				} else {
 					rData->parserState = RES_HEADERS;
@@ -400,7 +401,7 @@ checkType (ResponseData *rData, buffer *bIn, buffer *bOut, char *typeCompare) {
 	}
 
 	while (typeCompare[i] != 0) {
-		if (typeCompare[i] == ';') { // Delimitador que uso para los media types.
+		if (typeCompare[i] == ',') { // Delimitador que uso para los media types.
 			myIndex = 0; // Reseteo la búsqueda.
 		} else if (myType[myIndex] == typeCompare[i]) {
 			if ((typeCompare[i] == '/' && typeCompare[i+1] == '*') || typeCompare[i+1] == 0) {
