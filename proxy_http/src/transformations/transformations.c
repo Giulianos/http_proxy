@@ -39,7 +39,7 @@ transformations_new(int * fd_in, int * fd_out)
   if(error_file == NULL) {
        return -1;
   }
-  error_fd=open(error_file,'w');
+  error_fd=open(error_file,O_WRONLY |O_APPEND	);
   if(error_fd==-1){
     return -1;
   }
