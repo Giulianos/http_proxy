@@ -1,12 +1,13 @@
+#include <ctype.h>
 #include <metric/metric.h>
 #include <stdio.h>
-#include <ctype.h>
-#include <time.h>
 #include <stdlib.h>
+#include <time.h>
 
 static double connection_time_sum = 0;
 
-struct connection_time {
+struct connection_time
+{
   time_t init_time;
   time_t end_time;
 };
@@ -16,7 +17,7 @@ static double metrics[METRICS_ENUM_SIZE];
 int
 metric_create(enum metrics number, double value)
 {
-  if(number >= METRICS_ENUM_SIZE)
+  if (number >= METRICS_ENUM_SIZE)
     return -1;
 
   metrics[number] = value;
@@ -25,26 +26,26 @@ metric_create(enum metrics number, double value)
 }
 
 void
-metric_get_value_string(int index, char * value)
+metric_get_value_string(int index, char* value)
 {
-  if(index >= METRICS_ENUM_SIZE)
+  if (index >= METRICS_ENUM_SIZE)
     return;
 
-  if((enum metrics)index == AVG_CONNECTION_TIME) {
+  if ((enum metrics)index == AVG_CONNECTION_TIME) {
     sprintf(value, "%f", metrics[index]);
   } else {
     sprintf(value, "%.0f", metrics[index]);
   }
 }
 
-char *
+char*
 metric_get_name(unsigned char number)
 {
   enum metrics metric;
-  if(number >= METRICS_ENUM_SIZE)
+  if (number >= METRICS_ENUM_SIZE)
     return NULL;
-  metric = (enum metrics) number;
-  switch(metric) {
+  metric = (enum metrics)number;
+  switch (metric) {
     case INST_CONCURRENT_CONNECTIONS:
       return "inst_concurrent_conections";
     case MAX_CONCURRENT_CONNECTIONS:
@@ -72,13 +73,14 @@ metric_new_connection()
   connection_time_t contime;
 
   contime = malloc(sizeof(struct connection_time));
-  if(contime == NULL)
+  if (contime == NULL)
     return NULL;
 
   contime->init_time = time(NULL);
 
   metrics[INST_CONCURRENT_CONNECTIONS] += 1;
-  if(metrics[INST_CONCURRENT_CONNECTIONS] > metrics[MAX_CONCURRENT_CONNECTIONS]) {
+  if (metrics[INST_CONCURRENT_CONNECTIONS] >
+      metrics[MAX_CONCURRENT_CONNECTIONS]) {
     metrics[MAX_CONCURRENT_CONNECTIONS] = metrics[INST_CONCURRENT_CONNECTIONS];
   }
 

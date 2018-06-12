@@ -3,6 +3,7 @@
 #include "transformation_handlers.h"
 #include <arpa/inet.h>
 #include <client/client.h>
+#include <config/config.h>
 #include <limits/limits.h>
 #include <logger/logger.h>
 #include <memory.h>
@@ -13,23 +14,22 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <transformations/transformations.h>
-#include <config/config.h>
 
 static void* request_resolv_blocking(void* data);
 
 /** Transformation handlers */
 fd_handler transf_in_handlers = {
-    .handle_read  = NULL,
-    .handle_write = transf_write,
-    .handle_close = transf_close,
-    .handle_block = transf_block,
+  .handle_read = NULL,
+  .handle_write = transf_write,
+  .handle_close = transf_close,
+  .handle_block = transf_block,
 };
 
 fd_handler transf_out_handlers = {
-    .handle_read  = transf_read,
-    .handle_write = NULL,
-    .handle_close = transf_close,
-    .handle_block = transf_block,
+  .handle_read = transf_read,
+  .handle_write = NULL,
+  .handle_close = transf_close,
+  .handle_block = transf_block,
 };
 
 client_t
@@ -49,9 +49,11 @@ client_new(const struct client_config* config)
   client->shouldTransform = false;
   transformations_new(&client->transf_in_fd, &client->transf_out_fd);
 
-  if(client->shouldTransform) {
-    selector_register (client->selector, client->transf_in_fd, &transf_in_handlers, OP_NOOP, client);
-    selector_register (client->selector, client->transf_out_fd, &transf_out_handlers, OP_NOOP, client);
+  if (client->shouldTransform) {
+    selector_register(client->selector, client->transf_in_fd,
+                      &transf_in_handlers, OP_NOOP, client);
+    selector_register(client->selector, client->transf_out_fd,
+                      &transf_out_handlers, OP_NOOP, client);
   }
 
   defaultRequestStruct(&client->req_data);

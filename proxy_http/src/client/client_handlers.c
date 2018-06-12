@@ -29,7 +29,7 @@ client_read(struct selector_key* key)
       if (buffer_can_write(&client->pre_req_parse_buf)) {
         /** Get the buffer pointer and space available */
         size_t buffer_space;
-        uint8_t * buffer_ptr =
+        uint8_t* buffer_ptr =
           buffer_write_ptr(&client->pre_req_parse_buf, &buffer_space);
         ssize_t read_bytes = read(client->client_fd, buffer_ptr, buffer_space);
         /** If the read fails, close the connection */
@@ -114,14 +114,16 @@ client_write(struct selector_key* key)
 
         buffer_read_adv(&client->post_res_parse_buf, written_bytes);
         /** As i read from the buffer, read from the origin or transf */
-        if(client->shouldTransform) {
-          selector_set_interest (client->selector, client->transf_out_fd, OP_READ);
+        if (client->shouldTransform) {
+          selector_set_interest(client->selector, client->transf_out_fd,
+                                OP_READ);
         } else {
           selector_set_interest(client->selector, client->origin_fd, OP_READ);
         }
-      } else if (client->origin_fd ==
-                  -1 && !client->shouldTransform) { /** when the buffer is empty and the
-                            remote connection is closed */
+      } else if (client->origin_fd == -1 &&
+                 !client
+                    ->shouldTransform) { /** when the buffer is empty and the
+                 remote connection is closed */
         printf("client FINISHED\n");
         selector_unregister_fd(client->selector, client->client_fd);
         return;

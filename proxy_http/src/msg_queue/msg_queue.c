@@ -1,16 +1,17 @@
 #include <msg_queue/msg_queue.h>
 #include <protocol/protocol.h>
+#include <serializer/serializer.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <serializer/serializer.h>
 
-typedef struct qnode * qnode_t;
+typedef struct qnode* qnode_t;
 
-struct qnode {
-    msg_t * msg;
-    qnode_t next;
-} ;
+struct qnode
+{
+  msg_t* msg;
+  qnode_t next;
+};
 
 static int msg_fd = 0;
 static fd_selector msg_s = NULL;
@@ -24,35 +25,34 @@ q_init(int fd, fd_selector s)
   msg_s = s;
 }
 
-msg_t *
+msg_t*
 q_poll()
 {
-  msg_t * msg;
+  msg_t* msg;
 
-  if(q_is_empty()){
+  if (q_is_empty()) {
     return NULL;
   }
 
   msg = first->msg;
-  if(first == last)
+  if (first == last)
     last = NULL;
   first = first->next;
 
   return msg;
 }
 
-
 int
-q_offer(msg_t * msg)
+q_offer(msg_t* msg)
 {
   qnode_t qnode = malloc(sizeof(struct qnode));
-  if(qnode == NULL) {
+  if (qnode == NULL) {
     return -1;
   }
   qnode->msg = msg;
   qnode->next = NULL;
 
-  if(q_is_empty()) {
+  if (q_is_empty()) {
     first = qnode;
     last = qnode;
     return 0;
@@ -61,14 +61,11 @@ q_offer(msg_t * msg)
   last->next = qnode;
   last = last->next;
 
-
   return 0;
 }
-
 
 int
 q_is_empty()
 {
   return first == NULL;
 }
-

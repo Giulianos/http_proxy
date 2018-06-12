@@ -1,18 +1,18 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-
 #include <protocol/protocol.h>
 #include <unistd.h>
 
-typedef struct addr_data * addr_data_t;
+typedef struct addr_data* addr_data_t;
 
-struct addr_data {
-    struct sockaddr * addr;
-    socklen_t addr_len;
-    struct sctp_sndrcvinfo * sri;
-    struct sockaddr_in * peer;
-    socklen_t peer_len;
+struct addr_data
+{
+  struct sockaddr* addr;
+  socklen_t addr_len;
+  struct sctp_sndrcvinfo* sri;
+  struct sockaddr_in* peer;
+  socklen_t peer_len;
 };
 
 /**
@@ -23,8 +23,7 @@ struct addr_data {
  * @return the quantity of bytes written.
  */
 
-ssize_t
-send_msg(addr_data_t servdata, int socket, msg_t * msg);
+ssize_t send_msg(addr_data_t servdata, int socket, msg_t* msg);
 
 /**
  *
@@ -33,10 +32,8 @@ send_msg(addr_data_t servdata, int socket, msg_t * msg);
  * @return the quantity of bytes read.
  */
 
-ssize_t
-rcv_msg(addr_data_t servdata, int socket, msg_t * msg);
+ssize_t rcv_msg(addr_data_t servdata, int socket, msg_t* msg);
 
-void
-print_msg(msg_t * msg);
+void print_msg(msg_t* msg);
 
 #endif

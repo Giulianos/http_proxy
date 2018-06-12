@@ -44,17 +44,20 @@ remote_read(struct selector_key* key)
           }
 
           /** Check if it's something to transform */
-          if(client->shouldTransform && buffer_can_read (&client->pre_transf_buf)) {
+          if (client->shouldTransform &&
+              buffer_can_read(&client->pre_transf_buf)) {
             printf("New characters to transform\n");
-            /** Parser added characters to pre transform buffer, so set WRITE interest */
-            selector_set_interest(client->selector, client->transf_in_fd, OP_WRITE);
+            /** Parser added characters to pre transform buffer, so set WRITE
+             * interest */
+            selector_set_interest(client->selector, client->transf_in_fd,
+                                  OP_WRITE);
           }
 
-          if(!client->shouldTransform) {
+          if (!client->shouldTransform) {
             /** As i wrote to the buffer, write to the client */
-            selector_set_interest(client->selector, client->client_fd, OP_WRITE);
+            selector_set_interest(client->selector, client->client_fd,
+                                  OP_WRITE);
           }
-
         }
 
       } else {

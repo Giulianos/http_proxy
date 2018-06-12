@@ -1,9 +1,8 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-
-#include <protocol/protocol.h>
 #include <admin_handlers/admin_handlers.h>
+#include <protocol/protocol.h>
 #include <unistd.h>
 
 /**
@@ -14,8 +13,7 @@
  * @return the quantity of bytes written.
  */
 
-ssize_t
-send_msg(addr_data_t servdata, int socket, msg_t * msg);
+ssize_t send_msg(addr_data_t servdata, int socket, msg_t* msg);
 
 /**
  *
@@ -24,10 +22,8 @@ send_msg(addr_data_t servdata, int socket, msg_t * msg);
  * @return the quantity of bytes read.
  */
 
-ssize_t
-rcv_msg(addr_data_t servdata, int socket, msg_t * msg);
+ssize_t rcv_msg(addr_data_t servdata, int socket, msg_t* msg);
 
-void
-print_msg(msg_t * msg);
+void print_msg(msg_t* msg);
 
 #endif

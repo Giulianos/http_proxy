@@ -3,20 +3,18 @@
 
 #include <protocol/protocol.h>
 
-typedef struct pqnode * pqnode_t;
+typedef struct pqnode* pqnode_t;
 
-struct pqnode{
-  msg_t * msg;
+struct pqnode
+{
+  msg_t* msg;
   pqnode_t next;
 };
 
-msg_t *
-pq_poll();
+msg_t* pq_poll();
 
-void
-pq_offer(msg_t * msg);
+void pq_offer(msg_t* msg);
 
-int
-pq_is_empty();
+int pq_is_empty();
 
 #endif
