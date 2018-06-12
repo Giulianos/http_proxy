@@ -65,8 +65,6 @@ void log_sendf(struct log* l,const char *fmt, ...){
     log_send(l,buffer);
 }
 
-
-
 void
 log_write(struct selector_key * key){
     struct log* l;
@@ -77,7 +75,7 @@ log_write(struct selector_key * key){
         ssize_t written_bytes = write(l->writefd, buffer_ptr, buffer_size);
         buffer_read_adv(&l->logbuf, written_bytes);
     }else{
-       selector_set_interest(l->selector, l->writefd, OP_NOOP);
+        selector_set_interest(l->selector, l->writefd, OP_NOOP);
     }
 
 }

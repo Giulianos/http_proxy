@@ -6,11 +6,11 @@ project(proxy_http C)
 
 # Standard and compiler flags
 #set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS -fsanitize=address)
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread --std=c99 -pedantic -pedantic-errors -Wall -Wextra -Werror -Wno-unused-parameter -D_POSIX_C_SOURCE=200809L -O0 -fsanitize=address")
+#set(CMAKE_C_FLAGS -fsanitize=address)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread --std=c99  -D_POSIX_C_SOURCE=200809L -O0 -fsanitize=address")
 
 #set(CMAKE_C_FLAGS)
-add_compile_options(-pedantic -Wall -O0 )
+add_compile_options(-pedantic -O0 )
 include_directories(proxy_http/src/include)
 
 add_subdirectory(proxy_http/src)
