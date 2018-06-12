@@ -6,7 +6,12 @@ project(proxy_http C)
 
 # Standard and compiler flags
 set(CMAKE_C_STANDARD 99)
-add_compile_options(-pedantic -Wall)
+add_compile_options(-pedantic -Wall -O3)
+
+# ASAN
+#add_compile_options(-fsanitize=address)
+#link_libraries("-fsanitize=address")
+
 include_directories(src/include)
 
 add_subdirectory(src)
