@@ -85,15 +85,15 @@ int
 strncmp_case_insensitive(const char * str1, const char * str2, size_t n)
 {
   size_t i=0;
-  while(n>0 && str1[i] != '\0' &&
-        tolower (str1[i]) == tolower (str2[i]) &&
-        str2[i]!='\0') {
-    dprintf (STDERR_FILENO, "[STRNCMP_INSENSITIVE_INFO](n=%lu)%c matched against %c\n", n, str1[i], str2[i]);
-    n--;
-    i++;
-  }
-  dprintf (STDERR_FILENO, "[STRNCMP_INSENSITIVE_INFO](n=%lu)Ended\n", n);
-  return str1[i-1]-str2[i-1];
+  while(n>0 && (str1[i] != '\0' || str2[i]!='\0')) {
+      if(tolower(str1[i]) != tolower(str2[i]))
+        return tolower(str1[i]) - tolower(str2[i]);
+      dprintf (STDERR_FILENO, "[STRNCMP_INSENSITIVE_INFO](n=%lu)%c matched against %c\n", n, str1[i], str2[i]);
+      n--;
+      i++;
+    }
+  dprintf (STDERR_FILENO, "[STRNCMP_INSENSITIVE_INFO](n=%lu)Ended, return value:%d\n", n, str1[i-1]-str2[i-1]);
+  return tolower(str1[i]) - tolower(str2[i]);
 }
 
 void
@@ -129,6 +129,7 @@ split_host_port(host_details_t host_details)
   if(host_details->host[index] == '\0') {
     host_details->port = 80;
   } else {
+    host_details->host[index] = '\0';
     index++;
     host_details->port = (unsigned int)atoi (&host_details->host[index]);
   }
