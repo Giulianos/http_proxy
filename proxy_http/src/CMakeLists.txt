@@ -44,6 +44,7 @@ target_link_libraries(proxy_http RequestParser)
 target_link_libraries(proxy_http ResponseParser)
 target_link_libraries(proxy_http Logger)
 target_link_libraries(proxy_http Argument)
+
 target_link_libraries(proxy_http ${CMAKE_THREAD_LIBS_INIT})
 
 # Tests

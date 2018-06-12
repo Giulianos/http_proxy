@@ -1,5 +1,6 @@
 #include "remote_handlers.h"
 #include "client_private.h"
+#include "transformation_handlers.h"
 #include <client/client.h>
 #include <errno.h>
 #include <logger/logger.h>
@@ -7,6 +8,16 @@
 #include <netdb.h>
 #include <response_parser/response_parser.h>
 #include <sys/socket.h>
+#include <transformations/transformations.h>
+
+fd_handler transf_handlers = {
+        .handle_read = transf_read,
+        .handle_write = transf_write,
+        .handle_close = transf_close,
+        .handle_block = transf_block
+};
+
+
 
 void
 remote_read(struct selector_key* key)
@@ -33,6 +44,13 @@ remote_read(struct selector_key* key)
                         &client->post_res_parse_buf, &client->pre_transf_buf);
           if(client->res_data.withTransf){
               client->shouldTransform=true;
+              int fd_in,fd_out;
+              transformations_new(&fd_in,&fd_out);
+              client->transf_in_fd=fd_in;
+              client->transf_out_fd=fd_out;
+              selector_register(key->s, client->transf_in_fd, &transf_handlers, OP_READ, (void*)client);
+              selector_register(key->s, client->transf_out_fd, &transf_handlers, OP_WRITE, (void*)client);
+
           }
 
           if (client->res_data.state != RES_OK) { // TODO remove
@@ -77,7 +95,7 @@ remote_write(struct selector_key* key)
   switch (client->state) {
     case SEND_REQ:
       if (buffer_can_read(&client->post_req_parse_buf)) {
-        printf("Sending request..\n");
+        printf("Sending trans request..\n");
         size_t buffer_size;
         uint8_t* buffer_ptr =
           buffer_read_ptr(&client->post_req_parse_buf, &buffer_size);

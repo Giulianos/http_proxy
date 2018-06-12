@@ -9,9 +9,9 @@ transf_read(struct selector_key * key)
   if(buffer_can_write (&client->post_res_parse_buf)) {
     printf("Getting transformation...\n");
     ssize_t read_bytes = dump_chunk_from_fd (client->transf_out_fd, &client->post_res_parse_buf);
-    if( read_bytes < 0 ) {
+    if( read_bytes < 0  && client->origin_fd==-1) {
       printf("Error reading from transformation program\n");
-      selector_unregister_fd (client->selector, client->client_fd);
+      selector_unregister_fd (client->selector, client->transf_out_fd);
     } else if(read_bytes == 0) {
       if(write_empty_chunk (&client->post_res_parse_buf) > 0) {
         printf("Empty chunk sent!\n");
