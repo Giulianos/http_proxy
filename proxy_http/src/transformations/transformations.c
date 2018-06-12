@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <config/config.h>
+#include <fcntl.h>
 
 /**
  *
@@ -21,6 +22,7 @@ transformations_new(int * fd_in, int * fd_out)
 {
   int pipe_in[2];
   int pipe_out[2];
+  int error_fd;
   int rc;
 
   rc = pipe(pipe_in);
@@ -33,6 +35,14 @@ transformations_new(int * fd_in, int * fd_out)
     close(pipe_in[1]);
     return -1;
   }
+  char * error_file = config_get("error_file");
+  if(error_file == NULL) {
+       return -1;
+  }
+  error_fd=open(error_file,'w');
+  if(error_fd==-1){
+    return -1;
+  }
 
   switch(fork()) {
     case 0: /** TRANSF. */
@@ -40,8 +50,9 @@ transformations_new(int * fd_in, int * fd_out)
       close(pipe_out[0]);
       pipe_out[0] = pipe_in[1] = -1;
 
-      dup2(pipe_in[0], STDIN_FILENO);
+      dup2(pipe_in[0],  STDIN_FILENO);
       dup2(pipe_out[1], STDOUT_FILENO);
+      dup2(error_fd,    STDERR_FILENO);
 
       char * cmd = config_get("cmd");
       if(cmd == NULL) {
@@ -60,6 +71,7 @@ transformations_new(int * fd_in, int * fd_out)
       close(pipe_out[1]);
       close(pipe_in[0]);
       close(pipe_in[1]);
+      close(error_fd);
       return -1;
 
     default: /** PROXY */

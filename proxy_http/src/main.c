@@ -49,7 +49,7 @@ main(const int argc, const char ** argv)
     initialize_configurations("text/plain", "cat");
     config_create("proxy_port", "8080");
     config_create("mgmt_port", "9090");
-
+    config_create("error_file", "/dev/null");
     argument_get(argc,argv);
 
     /** proxy socket */

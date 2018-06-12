@@ -1,5 +1,4 @@
 #include <argument/argument.h>
-#include <memory.h>
 #include <config/config.h>
 
 void printhelp();
@@ -16,10 +15,10 @@ void argument_get(int argc,const char **argv) {
                 printhelp();
                 exit(0);
             case 'l': //direccion IP del proxy HTTP
-                //TODO hardcoded
+                config_create("proxy_addr", optarg);
                 break;
             case 'L': //direccion IP del management
-                //TODO hardcoded
+                config_create("mgmt_addr", optarg);
                 break;
             case 'M': //media-types
                 config_create("media_types", optarg);
@@ -41,8 +40,9 @@ void argument_get(int argc,const char **argv) {
         }
     }
 }
+
 void printhelp(){
-    printf("httpd - proxy HTTP que perimte transformar el cuerpo de las respuestas\n\n");
+    printf("httpd - proxy HTTP que permite transformar el cuerpo de las respuestas\n\n");
     printf("\t%s\n", "-e archivo de error");
     printf("\t%s\n", "-h ayuda");
     printf("\t%s\n", "-l direccion-http");
