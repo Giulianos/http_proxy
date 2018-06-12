@@ -84,7 +84,6 @@ void
 show_menu()
 {
   printf("Bienvenido Administrador\n"
-         "0) Enviar credenciales (password)\n"
          "1) Listar metricas\n"
          "2) Listar configuraciones\n"
          "3) Obtener metrica (indicar numero de metrica)\n"
