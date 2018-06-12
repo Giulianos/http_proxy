@@ -1,6 +1,6 @@
 #include <logger/logger.h>
 #include <stdio.h>
-#include <zconf.h>
+#include <stdarg.h>
 
 void log_thread(struct log* l);
 
