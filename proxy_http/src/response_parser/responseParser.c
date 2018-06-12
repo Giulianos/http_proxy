@@ -272,7 +272,7 @@ extractStatus (ResponseData *rData, buffer *bIn, buffer *bOut) {
 
 static bool
 isValidStatus (const int status) {
-	return true; //TODO mfallone fijar
+	return true;
     //return status == STATUS_OK || status == STATUS_NO_CONTENT;
 }
 

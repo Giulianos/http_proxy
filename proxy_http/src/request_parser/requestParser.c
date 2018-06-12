@@ -43,7 +43,7 @@ checkRequest(RequestData* rd, buffer* bIn, buffer* bOut,
 
   rData->hostCallback = hostCallback;
   rData->callbackData = callbackData;
-  rData->version = V_1_1; // TODO parche groncho mfallone
+  rData->version = V_1_1;
 
   success = checkRequestInner(rData, bIn, bOut);
 

@@ -5,7 +5,6 @@
 #include <netinet/in.h>
 #include <sys/param.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <stdlib.h>
 
 
@@ -74,7 +73,7 @@ main(const int argc, const char ** argv)
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons(SERVPORT);
-//    serveraddr.sin_port=htons((uint16_t) atoi(config_get("mgmt_port")));
+    serveraddr.sin_port=htons((uint16_t) atoi(config_get("mgmt_port")));
 
     return_value = bind(admin_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
     if(return_value < 0) {
@@ -101,30 +100,31 @@ main(const int argc, const char ** argv)
 
     const int server = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
     if(server < 0) {
-//        err_msg = "unable to create socket";
-        /** exit with error */
+        err_msg = "unable to create socket";
+        printf("%s\n",err_msg);
         return 1;
     }
 
     setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
     if(bind(server, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
-//        err_msg = "unable to bind socket";
-        /** exit with error */
+        err_msg = "unable to bind socket";
+        printf("%s\n",err_msg);
+
         return 1;
     }
 
     if (listen(server, 20) < 0) {
-//        err_msg = "unable to listen";
-        /** exit with error */
+        err_msg = "unable to listen";
+        printf("%s\n",err_msg);
         return 1;
     }
 
     /** Sets non-blocking io on server */
 
     if(selector_fd_set_nio(server) == -1) {
-//        err_msg = "getting server socket flags";
-        /** exit with error */
+        err_msg = "getting server socket flags";
+        printf("%s\n",err_msg);
         return 1;
     }
 
@@ -143,15 +143,15 @@ main(const int argc, const char ** argv)
     };
 
     if(selector_init(&conf) != 0) {
-//        err_msg = "initializing selector";
-        /** exit with error */
+        err_msg = "initializing selector";
+        printf("%s\n",err_msg);
         return 1;
     }
 
     selector = selector_new(1024);
     if(selector == NULL) {
-//        err_msg = "unable to create selector";
-        /** exit with error */
+        err_msg = "unable to create selector";
+        printf("%s\n",err_msg);
         return 1;
     }
 

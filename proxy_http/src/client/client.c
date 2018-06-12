@@ -104,12 +104,6 @@ client_new(const struct client_config* config)
 }
 
 void
-client_restart_state(client_t client)
-{
-  /** TODO: Restart client state */
-}
-
-void
 client_free_resources(client_t client)
 {
 

@@ -16,9 +16,11 @@ void argument_get(int argc,const char **argv) {
                 exit(0);
             case 'l': //direccion IP del proxy HTTP
                 config_create("proxy_addr", optarg);
+                printf("-l no implementado\n");
                 break;
             case 'L': //direccion IP del management
                 config_create("mgmt_addr", optarg);
+                printf("-L no implementado\n");
                 break;
             case 'M': //media-types
                 config_create("media_types", optarg);
