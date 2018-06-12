@@ -1,6 +1,11 @@
 # TP de Protocolos de Comunicacion
 En este manual se describen los pasos para compilar y ejecutar las dos aplicaciones que conforman el TPE.
 
+## Entregables
+En el directorio *docs* se encuentran archivos con informacion sobre las implmentaciones. Los requeridos son *informe.pdf* y *presentacion.pdf*.
+En el directorio *proxy_http* se encuentra el codigo fuente del servidor proxy.
+En el directorio *admin_client* se encuentra el codigo fuente del cliente de administracion.
+
 ## Compilacion
 La compilacion se realiza utilizando cmake. Se requiere al menos la version 3.7.
 #### Servidor
