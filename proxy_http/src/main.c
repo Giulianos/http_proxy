@@ -26,6 +26,9 @@
 void
 listen_read_handler(struct selector_key *key);
 
+int
+initialize_configurations(const char * media_types, const char * cmd);
+
 struct log l;
 
 int
@@ -35,7 +38,6 @@ main(const int argc, const char ** argv)
     const char       *err_msg = NULL;
     selector_status  ss       = SELECTOR_SUCCESS;
     fd_selector      selector = NULL;
-    int              port     = 8080;
 
     /** sctp server variables */
     int admin_socket, msg_flags;
@@ -49,7 +51,7 @@ main(const int argc, const char ** argv)
     config_create("proxy_port", "8080");
     config_create("mgmt_port", "9090");
     config_create("error_file", "/dev/null");
-    argument_get(argc,argv);
+    argument_get(argc,(char **)argv);
 
     /** proxy socket */
     struct sockaddr_in6 addr;
@@ -169,7 +171,7 @@ main(const int argc, const char ** argv)
             .handle_close = log_close
     };
 
-    //ss = selector_register(selector,l.writefd,&logging_handlers,OP_WRITE,&l);
+    ss = selector_register(selector,l.writefd,&logging_handlers,OP_WRITE,&l);
     if(ss != SELECTOR_SUCCESS) {
 //        err_msg = "registering fd";
         /** exit with error */

@@ -13,6 +13,6 @@
 * @param argc and argv from main
 * initializes the configurations received from parameters
 */
-void argument_get(int argc,const char **argv);
+void argument_get(int argc, char **argv);
 
 #endif //PROXY_HTTP_ARGUMENT_H

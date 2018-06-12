@@ -13,7 +13,7 @@ write_empty_chunk(buffer * dst_buffer)
   uint8_t * dst_buffer_ptr = buffer_write_ptr (dst_buffer, &dst_buffer_space);
   size_t chunk_len = strlen("0\r\n\r\n");
   if(dst_buffer_space >= chunk_len) {
-    strncpy(dst_buffer_ptr, "0\r\n\r\n", chunk_len);
+    strncpy((char *)dst_buffer_ptr, "0\r\n\r\n", chunk_len);
     buffer_write_adv (dst_buffer, chunk_len);
     return chunk_len;
   } else {
@@ -42,7 +42,6 @@ dump_chunk_from_fd(int src_fd, buffer * dst_buffer)
       current_dst_buffer_ptr+=read_bytes;
       current_dst_buffer_ptr += sprintf((char *)current_dst_buffer_ptr, "\r\n");
       buffer_write_adv (dst_buffer, current_dst_buffer_ptr - dst_buffer_ptr);
-      printf("Wrote chunk of size:%d\n", current_dst_buffer_ptr - dst_buffer_ptr);
       free(temp_buffer);
       return current_dst_buffer_ptr - dst_buffer_ptr;
     } else {

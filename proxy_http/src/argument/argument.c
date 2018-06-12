@@ -3,7 +3,7 @@
 
 void printhelp();
 
-void argument_get(int argc,const char **argv) {
+void argument_get(int argc, char **argv) {
     int c;
 
     while ((c = getopt (argc, argv, "e:hl:l:L:m:M:o:p:t:v")) != -1){
@@ -43,7 +43,9 @@ void argument_get(int argc,const char **argv) {
     }
 }
 
-void printhelp(){
+void
+printhelp()
+{
     printf("httpd - proxy HTTP que permite transformar el cuerpo de las respuestas\n\n");
     printf("\t%s\n", "-e archivo de error");
     printf("\t%s\n", "-h ayuda");
@@ -54,6 +56,5 @@ void printhelp(){
     printf("\t%s\n", "-p puerto del proxy");
     printf("\t%s\n", "-t comando de transformacion");
     printf("\t%s\n", "-v version");
-};
-
+}
 
