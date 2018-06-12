@@ -1,4 +1,5 @@
 # Subdirectories
+add_subdirectory(http_responses)
 add_subdirectory(transformations)
 add_subdirectory(response_parser)
 add_subdirectory(request_parser)
@@ -23,6 +24,7 @@ add_executable(proxy_http main.c)
 set_target_properties(proxy_http PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
 
 # Libraries
+target_link_libraries(proxy_http HTTPResponses)
 
 target_link_libraries(proxy_http ${SCTP_LIBRARIES})
 target_link_libraries(proxy_http Serializer)
@@ -46,19 +48,22 @@ target_link_libraries(proxy_http ${CMAKE_THREAD_LIBS_INIT})
 
 # Tests
 add_executable(bufferTest tests/bufferTest.c)
+add_executable(HTTPResponseTest tests/http_responses_test.c)
 add_executable(myParserUtilsTest tests/myParserUtilsTest.c)
 add_executable(requestParserTest tests/requestParserTest.c)
 add_executable(responseParserTest tests/responseParserTest.c)
-add_executable(transformations_test tests/transformation_test.c)
 
-set_target_properties(bufferTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
-set_target_properties(myParserUtilsTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
-set_target_properties(requestParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
-set_target_properties(responseParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
-set_target_properties(transformations_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target)
+set_target_properties(bufferTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target/test)
+set_target_properties(HTTPResponseTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target/test)
+set_target_properties(myParserUtilsTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target/test)
+set_target_properties(requestParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target/test)
+set_target_properties(responseParserTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../target/test)
 
 # Tests Libraries
 target_link_libraries(bufferTest Buffer)
+
+target_link_libraries(HTTPResponseTest Buffer)
+target_link_libraries(HTTPResponseTest HTTPResponses)
 
 target_link_libraries(myParserUtilsTest Buffer)
 target_link_libraries(myParserUtilsTest MyParserUtils)
@@ -71,4 +76,3 @@ target_link_libraries(responseParserTest Buffer)
 target_link_libraries(responseParserTest MyParserUtils)
 target_link_libraries(responseParserTest ResponseParser)
 
-target_link_libraries(transformations_test Transformations)
